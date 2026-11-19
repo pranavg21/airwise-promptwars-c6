@@ -8,7 +8,7 @@
 
 AirWise is not another generic chatbot or a map that paints arbitrary numbers. It combines real external **modeled air-quality estimates** with deterministic, inspectable decisions and an **opt-in server-side Gemini narrative**. It never silently turns a model forecast into a government-monitored reading.
 
-**Deployment:** Replace this line with the **actual working HTTPS deployment URL** before making a submission. Do **not** invent a live demo link.  
+**Deployment:** https://airwise-promptwars-c6-897669266422.asia-south1.run.app  
 **Demo video:** Add your actual unlisted YouTube or publicly accessible Google Drive URL after recording.
 
 ## 1. Key functionality and problem alignment
@@ -110,16 +110,29 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for an adversarial go/no-go che
 
 A single Docker service hosts both API and frontend, so no separate frontend deployment or cross-origin API configuration is needed.
 
-**Option A — Render Blueprint (simple):**
+**Option A — Google Cloud Run (production deployment):**
 
-1. Push this project into a new **public** GitHub repository with `main` as its **only branch**.
-2. In Render, create a new Blueprint or Docker web service connected to this repository.
-3. Use `render.yaml` (or select the Dockerfile) and deploy.
-4. In Render environment variables, set `GEMINI_API_KEY` to your valid Google AI Studio key. `GEMINI_MODEL` defaults to `gemini-3.5-flash-lite`.
-5. Open `https://YOUR-SERVICE.onrender.com/api/health` to see `status: ok` and `ai_configured: true` (no secret exposed).
-6. Open the app in a private/incognito window. Test location search, model readings, rule-based plan, real Gemini narrative, follow-up question, link access, print, copy and a poor-network failure scenario.
+Deployed with dedicated runtime service account `airwise-runner` and server-side secret management:
 
-**Important for the competition:** Render's Free plan can suspend an idle instance and introduce a cold start. For maximum judging reliability, consider a paid always-on instance or another reliable host; check current pricing and account availability. The included `render.yaml` defaults to Free for reproducibility, **not** because Free is superior for competition judging.
+```bash
+gcloud run deploy airwise-promptwars-c6 \
+  --source . \
+  --region asia-south1 \
+  --project venueflow-maps \
+  --platform managed \
+  --allow-unauthenticated \
+  --port 8080 \
+  --service-account airwise-runner@venueflow-maps.iam.gserviceaccount.com \
+  --set-secrets GEMINI_API_KEY=airwise-gemini-api-key:latest \
+  --set-env-vars GEMINI_MODEL=gemini-2.5-flash \
+  --min-instances 0 \
+  --max-instances 2
+```
+
+1. Live URL: `https://airwise-promptwars-c6-897669266422.asia-south1.run.app`
+2. Secret `airwise-gemini-api-key` is securely injected from Secret Manager into container memory; no secret is exposed in client-side code, Git, or logs.
+3. Open `https://airwise-promptwars-c6-897669266422.asia-south1.run.app/api/health` to confirm `status: ok` and `ai_configured: true`.
+4. Scale-to-zero (`--min-instances 0`) ensures $0 idle hosting costs within Google Cloud free tiers.
 
 **Option B — any Docker host:**
 
