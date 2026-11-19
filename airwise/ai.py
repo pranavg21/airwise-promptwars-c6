@@ -65,7 +65,7 @@ async def personalize(snapshot: Snapshot, profile: Profile, policy: PolicyResult
     key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not key:
         raise AiUnavailable("AI service is not configured")
-    model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
     if not MODEL_RE.fullmatch(model):
         raise AiUnavailable("AI model configuration invalid")
     request_body = {
@@ -73,7 +73,7 @@ async def personalize(snapshot: Snapshot, profile: Profile, policy: PolicyResult
         "contents": [{"role": "user", "parts": [{"text": json.dumps(build_context(snapshot, profile, policy, question))}]}],
         "generationConfig": {
             "temperature": 0.25,
-            "maxOutputTokens": 1200,
+            "maxOutputTokens": 2500,
             "responseMimeType": "application/json",
             "responseSchema": {
                 "type": "OBJECT",
@@ -88,7 +88,7 @@ async def personalize(snapshot: Snapshot, profile: Profile, policy: PolicyResult
         },
     }
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(18.0, connect=4.0), follow_redirects=False) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(28.0, connect=5.0), follow_redirects=False) as client:
             response = await client.post(f"{GOOGLE_ENDPOINT}/{model}:generateContent", json=request_body,
                                          headers={"x-goog-api-key": key, "Content-Type": "application/json"})
             response.raise_for_status()
