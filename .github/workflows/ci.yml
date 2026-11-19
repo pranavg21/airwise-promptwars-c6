@@ -7,6 +7,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -14,7 +16,7 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements-dev.txt
       - run: python -m compileall -q airwise
-      - run: pytest -q --cov=airwise --cov-branch --cov-report=term-missing --cov-fail-under=80
+      - run: python -m pytest -q --cov=airwise --cov-branch --cov-report=term-missing --cov-fail-under=80
       - run: python scripts/audit_repo.py
       - run: pip install playwright==1.62.0
       - run: python -m playwright install --with-deps chromium
