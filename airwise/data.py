@@ -43,6 +43,7 @@ def finite(value: Any) -> float | None:
 
 
 async def fetch_json(url: str, params: dict[str, Any]) -> dict[str, Any]:
+    """GET one of the two allowed Open-Meteo URLs and return its JSON object, or raise ProviderError."""
     if url not in ALLOWED_URLS:
         raise ProviderError("Unexpected upstream host")
     timeout = httpx.Timeout(config.FORECAST_READ_TIMEOUT_S, connect=config.FORECAST_CONNECT_TIMEOUT_S)
@@ -63,6 +64,7 @@ async def fetch_json(url: str, params: dict[str, Any]) -> dict[str, Any]:
 
 
 def _location(city: dict[str, Any]) -> Location | None:
+    """A validated place from one geocoding result, or None when it is incomplete or out of range."""
     try:
         return Location(
             name=city["name"],
@@ -76,6 +78,7 @@ def _location(city: dict[str, Any]) -> Location | None:
 
 
 async def search_locations(query: str) -> list[Location]:
+    """Up to six validated places for a typed name, cached for a day per normalized query."""
     key = query.strip().lower()
     cached = await geo_cache.get(key)
     if cached is not None:
@@ -92,6 +95,7 @@ async def search_locations(query: str) -> list[Location]:
 
 
 def _value_at(hourly: dict[str, Any], key: str, index: int) -> float | None:
+    """The finite, non-negative value at `index` of an hourly series, or None."""
     values = hourly.get(key)
     return finite(values[index]) if isinstance(values, list) and index < len(values) else None
 
@@ -154,6 +158,7 @@ def location_key(location: Location) -> str:
 
 
 async def fetch_air(location: Location) -> Snapshot:
+    """Current and hourly modeled air quality for a place, cached for eight minutes per rounded location."""
     key = location_key(location)
     cached = await air_cache.get(key)
     if cached is not None:

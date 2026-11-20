@@ -14,6 +14,8 @@ Concern = Literal["low", "moderate", "high", "very_high", "unknown"]
 
 @dataclass(frozen=True)
 class AqiBand:
+    """One US EPA AQI category and how the app treats it."""
+
     key: str  # Stable identifier the browser maps to a colour.
     label: str  # Category name shown to people.
     concern: Concern  # Level the policy engine uses to choose precautions.

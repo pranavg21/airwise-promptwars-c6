@@ -83,9 +83,11 @@ class Situation:
     sensitive: bool
 
     def prioritises(self, priority: str) -> bool:
+        """Whether the user selected this priority."""
         return priority in self.profile.priorities
 
     def is_persona(self, persona: str) -> bool:
+        """Whether the user chose this persona."""
         return self.profile.persona == persona
 
 
@@ -136,6 +138,7 @@ SWAP_RULES: tuple[Rule, ...] = (
 
 
 def headline(situation: Situation) -> str:
+    """One-line plan headline for the air quality and household."""
     if situation.concern in {"high", "very_high"}:
         return catalog.HEADLINE_HIGH
     if situation.sensitive and situation.concern == "moderate":

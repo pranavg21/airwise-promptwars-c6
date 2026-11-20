@@ -11,21 +11,23 @@ AirWise is not another generic chatbot or a map that paints arbitrary numbers. I
 **Deployment:** https://airwise-promptwars-c6-897669266422.asia-south1.run.app  
 **Demo video:** [Watch the AirWise demo on YouTube](https://youtu.be/TvnFK4hocVI)
 
-## 1. Key functionality and problem alignment
+## 1. Requirement traceability
 
-| Judge-relevant requirement | What actually works | Proof in repo |
-|---|---|---|
-| Location-aware advice | Search cities or select Delhi, Mumbai, Pune, Bengaluru; validated WGS84 coordinates | `airwise/data.py`, `airwise/models.py`, `tests/test_data.py` |
-| Current urban pollution | Current **modeled** US AQI, PM2.5, PM10 from Open-Meteo/CAMS; one US AQI category definition shared by the API and the dashboard | `airwise/data.py`, `airwise/aqi.py`, `static/js/readings.js`, `tests/test_aqi.py` |
-| 24-hour decision support | Modeled hourly AQI plot, accessible hourly table and lowest forecast hour | `airwise/policy.py`, `static/js/chart.js`, `tests/test_policy.py` |
-| Personalized family guidance | Child, older-adult, respiratory-sensitivity, daily priorities and budget | Rules in `airwise/policy.py`, text in `airwise/catalog.py`, `tests/test_policy_rules.py` |
-| Low-emission daily routines | Context-aware trip reduction, less idling, school-run alternatives and collective actions | `SWAP_RULES` in `airwise/policy.py`, swaps in `airwise/catalog.py` |
-| Indoor air improvements | Combustion-source reduction, caution around ventilation, optional filtration | `HOME`, `BUDGET` and `COMBUSTION_SWAP` in `airwise/catalog.py` |
-| Direct impacts explained | Every protective and emissions-reducing suggestion includes the mechanism, reference and relevant limitation | `Advice.why`, `Advice.reference` |
-| Actual generative AI | Gemini structured JSON for opt-in personalized daily brief and live follow-up questions | `airwise/ai.py`, `/api/plan`, `/api/ask` |
-| Responsible failure behavior | No fabricated AQI during outage, no fake AI results when the key is absent or the quota is used up, clear status | `tests/test_api.py`, `tests/test_ask.py`, `tests/test_ai_resilience.py` |
-| Community use | Copyable source-attributed public bulletin that excludes household medical preferences, printable action plan | `static/js/brief.js`, `tests/js/pure-modules.test.js`, print rules in `static/css/responsive.css` |
-| Transparency | Source, data timestamp, indexing standard, limitations, traceable policy reasons | App methodology section and `docs/ARCHITECTURE.md` |
+Each clause of the challenge brief, where a user sees it, and the code and tests behind it.
+
+| Brief requirement | Where you see it in the app | Code | Tests |
+|---|---|---|---|
+| GenAI-powered assistant | Opt-in Gemini briefing (`#aiContent`) and follow-up questions (`#askForm`) | `airwise/ai.py`; `/api/plan`, `/api/ask` in `airwise/main.py` | `tests/test_ai.py`, `tests/test_ask.py`, `tests/test_ai_resilience.py` |
+| For families and communities | Persona selector (`#persona`: family, commuter, outdoor worker, neighbourhood group); shareable community brief (`#copyBtn`) | `ACTION_RULES` in `airwise/policy.py`; `static/js/brief.js` | `tests/test_policy_rules.py`, `tests/js/pure-modules.test.js` |
+| Navigating winter smog where the user lives | City search (`#citySearch`) and shortcuts; current modeled US AQI, PM2.5, PM10 (`#aqiPanel`); 24-hour outlook chart and table (`#chart`, `#hourlyTable`) | `airwise/data.py`, `airwise/aqi.py`, `airwise/forecast.py` | `tests/test_data.py`, `tests/test_aqi.py`, `tests/test_forecast.py`, `scripts/browser_check.py` |
+| Low-emission daily routines | Timing comparison for the planned activity (`#shiftResult`); routine and exposure cards (`#recommendations`) | `find_lower_hour` and `EXPOSURE_RULES` in `airwise/policy.py`; text in `airwise/catalog.py` | `tests/test_windows.py`, `tests/test_policy.py` |
+| Indoor air-quality actions | "Build a cleaner-air room" and "No-purchase protection first" cards | `HOME`, `BUDGET` in `airwise/catalog.py` | `tests/test_policy_rules.py` |
+| Sustainable alternatives | Sustainable swap cards (`#swaps`) | `SWAP_RULES` in `airwise/policy.py`; `*_SWAP` in `airwise/catalog.py` | `tests/test_policy_rules.py`, `tests/test_policy.py` |
+| Tailored to location and lifestyle | Household flags (`#children`, `#older`, `#respiratory`), priorities, budget (`#budget`), outdoor hour and minutes (`#startHour`, `#outdoorMin`) | `Profile` in `airwise/models.py`; `Situation` and rules in `airwise/policy.py` | `tests/test_policy_rules.py`; rule-engine output recorded for 43,008 combinations ([verification record](docs/VERIFICATION.md)) |
+| Clearly explaining the direct impact of each choice | "Why this matters" on every card; "Direct impact" on every swap; modeled PM2.5 averages and difference for the timing shift; decision trace (`#traceList`) | `Advice.why`, `TRACE_*` in `airwise/catalog.py`; `Shift` in `airwise/models.py` | `tests/test_policy.py`, `tests/test_windows.py` |
+| No invented data | "DATA UNAVAILABLE" and a notice when the forecast fails; AI marked unavailable instead of faked | `ProviderError` in `airwise/data.py`; `snapshot_or_503` and `optional_briefing` in `airwise/main.py` | `tests/test_api.py`, `tests/test_edge_cases.py`, outage scenario in `scripts/browser_check.py` |
+
+Design decisions and their trade-offs are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ### Four personas are not interchangeable
 

@@ -15,6 +15,8 @@ from . import config
 
 
 class TimedReading(Protocol):
+    """Anything with a local ISO time and an optional US AQI, such as models.Hour."""
+
     time: str
     us_aqi: float | None
 

@@ -67,6 +67,7 @@ class AiUnavailableError(Exception):
 
 
 def configured() -> bool:
+    """Whether a Gemini key is set; /api/health reports this to the browser."""
     return config.gemini_configured()
 
 
@@ -95,6 +96,7 @@ def build_context(
 
 
 def request_body(context: dict[str, Any]) -> dict[str, Any]:
+    """The generateContent request: fixed instructions, minimized context and the reply schema."""
     return {
         "systemInstruction": {"parts": [{"text": SYSTEM_INSTRUCTIONS}]},
         "contents": [{"role": "user", "parts": [{"text": json.dumps(context)}]}],
@@ -121,6 +123,7 @@ def _failure(model: str, reason: str, status: int | None = None) -> AiUnavailabl
 
 
 async def _post(api_key: str, model: str, body: dict[str, Any], timeout_s: float) -> dict[str, Any]:
+    """Send one generateContent request and return its JSON object; every failure becomes a logged reason."""
     timeout = httpx.Timeout(timeout_s, connect=config.GEMINI_CONNECT_TIMEOUT_S)
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
@@ -176,6 +179,7 @@ async def _generate(settings: config.GeminiSettings, body: dict[str, Any], budge
 
 
 def _cache_key(snapshot: Snapshot, profile: Profile, question: str | None) -> str:
+    """Answers are reused only for the same place, forecast hour, profile and question."""
     parts = [location_key(snapshot.location), snapshot.model_time, profile.model_dump_json(), question or ""]
     return json.dumps(parts)
 

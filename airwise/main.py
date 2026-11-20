@@ -31,16 +31,19 @@ gate = RateGate()
 
 @app.middleware("http")
 async def guard(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    """Reject unsafe requests before routing and add security headers to every response."""
     response = reject_unsafe_request(request) or await call_next(request)
     return apply_headers(response, request.url.path)
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_error(_request: Request, _exc: RequestValidationError) -> JSONResponse:
+    """Answer invalid input with a generic 422 that does not echo the request."""
     return JSONResponse({"error": "Invalid request. Check input fields and limits."}, status_code=422)
 
 
 def limit(request: Request, scope: str) -> None:
+    """Raise 429 with Retry-After when this client exceeds the scope's allowance."""
     client = request.client.host if request.client else "unknown"
     if not gate.check(f"{scope}:{client}", config.RATE_LIMITS[scope], config.RATE_WINDOW_S):
         raise HTTPException(
@@ -56,6 +59,7 @@ def ai_budget(started: float) -> float:
 
 
 async def snapshot_or_503(location: Location, detail: str) -> Snapshot:
+    """The forecast for a place, or a 503 with `detail` when the provider fails; nothing is invented."""
     try:
         return await fetch_air(location)
     except ProviderError as exc:
@@ -64,6 +68,7 @@ async def snapshot_or_503(location: Location, detail: str) -> Snapshot:
 
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 async def home() -> FileResponse:
+    """The single-page app."""
     return FileResponse(STATIC / "index.html", media_type="text/html")
 
 
@@ -76,11 +81,13 @@ async def favicon() -> FileResponse:
 @app.get("/api/health")
 @app.head("/api/health", include_in_schema=False)
 async def health() -> dict[str, Any]:
+    """Liveness and whether AI is configured; never reveals the key."""
     return {"status": "ok", "ai_configured": configured(), "source": "Open-Meteo/CAMS modeled air quality"}
 
 
 @app.get("/api/geo")
 async def geocode(request: Request, q: str = CITY_QUERY) -> dict[str, Any]:
+    """Places matching a typed city name."""
     limit(request, "geo")
     try:
         return {"results": [loc.model_dump() for loc in await search_locations(q)]}
@@ -90,6 +97,7 @@ async def geocode(request: Request, q: str = CITY_QUERY) -> dict[str, Any]:
 
 @app.post("/api/air")
 async def air(request: Request, location: Location) -> dict[str, Any]:
+    """Current and forecast air quality for a place."""
     limit(request, "air")
     snapshot = await snapshot_or_503(location, "Live forecast unavailable; no readings were estimated.")
     return snapshot.model_dump()
@@ -98,8 +106,11 @@ async def air(request: Request, location: Location) -> dict[str, Any]:
 async def optional_briefing(
     request: Request, snapshot: Snapshot, profile: Profile, policy: PolicyResult, started: float
 ) -> tuple[dict[str, Any] | None, str]:
-    """The Gemini briefing and its status. The plan is returned either way, so AI problems only
-    change the status: rate limited, out of time and Gemini failures all report "unavailable"."""
+    """The Gemini briefing and its status.
+
+    The plan is returned either way, so AI problems only change the status: rate limited,
+    out of time and Gemini failures all report "unavailable".
+    """
     try:
         limit(request, "ai")
     except HTTPException:
@@ -115,6 +126,7 @@ async def optional_briefing(
 
 @app.post("/api/plan")
 async def plan(request: Request, body: PlanRequest) -> dict[str, Any]:
+    """The deterministic plan, plus a Gemini briefing when the user consented."""
     started = time.monotonic()
     limit(request, "plan")
     snapshot = await snapshot_or_503(
@@ -135,6 +147,7 @@ async def plan(request: Request, body: PlanRequest) -> dict[str, Any]:
 
 @app.post("/api/ask")
 async def ask(request: Request, body: AskRequest) -> dict[str, Any]:
+    """A Gemini answer to a follow-up question, grounded in the current forecast and plan."""
     started = time.monotonic()
     limit(request, "ai")
     if not body.ai_consent:

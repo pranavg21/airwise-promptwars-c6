@@ -28,10 +28,12 @@ BODY_METHODS = frozenset({"POST", "PUT", "PATCH"})
 
 
 def _error(message: str, status: int) -> JSONResponse:
+    """A JSON error body with the given status."""
     return JSONResponse({"error": message}, status_code=status)
 
 
 def _size_error(request: Request) -> JSONResponse | None:
+    """Reject a malformed or oversized Content-Length before the body is read."""
     length = request.headers.get("content-length")
     if length is None:
         return None
@@ -43,6 +45,7 @@ def _size_error(request: Request) -> JSONResponse | None:
 
 
 def _api_write_error(request: Request) -> JSONResponse | None:
+    """Reject cross-site or non-JSON writes to the API."""
     if request.headers.get("sec-fetch-site") == "cross-site":
         return _error("Cross-site requests are not allowed", 403)
     if request.headers.get("content-type", "").split(";")[0] != "application/json":
@@ -72,9 +75,11 @@ class RateGate:
     """Sliding-window limiter, per process only (use edge or WAF quotas at scale)."""
 
     def __init__(self) -> None:
+        """Start with no recorded requests."""
         self.requests: dict[str, deque[float]] = defaultdict(deque)
 
     def check(self, key: str, max_requests: int, window_sec: float) -> bool:
+        """Record a request for `key`; False when it exceeds `max_requests` within `window_sec`."""
         now = time.monotonic()
         bucket = self.requests[key]
         while bucket and bucket[0] <= now - window_sec:
@@ -87,5 +92,6 @@ class RateGate:
         return True
 
     def _forget_idle(self, now: float) -> None:
+        """Drop clients idle for a whole window so memory stays bounded."""
         recent = {k: v for k, v in self.requests.items() if v and v[-1] > now - config.RATE_WINDOW_S}
         self.requests = defaultdict(deque, recent)

@@ -57,11 +57,14 @@ class ConfigurationError(ValueError):
 
 @dataclass(frozen=True)
 class GeminiSettings:
+    """The Gemini key and the models to try, in order."""
+
     api_key: str
     models: tuple[str, ...]  # Primary model first, then the optional fallback.
 
 
 def gemini_configured() -> bool:
+    """Whether GEMINI_API_KEY is set; its value is never returned."""
     return bool(os.environ.get("GEMINI_API_KEY", "").strip())
 
 

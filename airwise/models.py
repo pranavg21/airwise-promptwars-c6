@@ -15,14 +15,19 @@ STEP_MAX_CHARS = 300
 
 
 def default_priorities() -> list[Priority]:
+    """Priorities used when a request chooses none: commute and home."""
     return ["commute", "home"]
 
 
 class StrictModel(BaseModel):
+    """Base for every API model: unknown fields are rejected and strings are trimmed."""
+
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
 class Location(StrictModel):
+    """A place chosen by the user: display name and WGS84 coordinates."""
+
     name: str = Field(min_length=2, max_length=90)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
@@ -31,6 +36,8 @@ class Location(StrictModel):
 
 
 class Profile(StrictModel):
+    """The household and routine choices that select recommendations."""
+
     persona: Literal["family", "commuter", "outdoor", "community"] = "family"
     children: bool = False
     older_adult: bool = False
@@ -44,12 +51,15 @@ class Profile(StrictModel):
     @field_validator("priorities")
     @classmethod
     def no_duplicates(cls, v: list[str]) -> list[str]:
+        """Reject a priority listed more than once."""
         if len(v) != len(set(v)):
             raise ValueError("Priorities must not be repeated")
         return v
 
 
 class Hour(StrictModel):
+    """One hourly forecast point; values missing upstream stay None."""
+
     time: str
     us_aqi: float | None = Field(default=None, ge=0, le=700)
     pm2_5: float | None = Field(default=None, ge=0, le=3000)
@@ -57,6 +67,8 @@ class Hour(StrictModel):
 
 
 class Snapshot(StrictModel):
+    """A validated forecast for one place, with its source, scale and derived outlook."""
+
     location: Location
     retrieved_at: str
     model_time: str
@@ -97,12 +109,16 @@ class Snapshot(StrictModel):
 
 
 class PlanRequest(StrictModel):
+    """Body of /api/plan: place, profile and explicit AI consent."""
+
     location: Location
     profile: Profile
     ai_consent: bool = False
 
 
 class AskRequest(PlanRequest):
+    """Body of /api/ask: a plan request plus the user's question."""
+
     question: str = Field(min_length=5, max_length=600)
 
 
@@ -120,6 +136,8 @@ class Advice(StrictModel):
 
 
 class Shift(StrictModel):
+    """A better start time for the whole planned activity, with its modeled PM2.5 comparison."""
+
     current_time: str
     recommended_time: str
     original_pm25: float
@@ -130,6 +148,8 @@ class Shift(StrictModel):
 
 
 class PolicyResult(StrictModel):
+    """The deterministic plan returned by /api/plan."""
+
     category: str
     concern: Concern
     headline: str
@@ -144,6 +164,8 @@ class PolicyResult(StrictModel):
 
 
 class AiResponse(StrictModel):
+    """Gemini's structured reply, validated before it is shown."""
+
     summary: str = Field(min_length=5, max_length=900)
     steps: list[str] = Field(min_length=2, max_length=5)
     rationale: str = Field(min_length=5, max_length=900)
@@ -151,6 +173,7 @@ class AiResponse(StrictModel):
     @field_validator("steps")
     @classmethod
     def short_steps(cls, v: list[str]) -> list[str]:
+        """Each step must be between 4 and 300 characters."""
         if any(not STEP_MIN_CHARS <= len(s) <= STEP_MAX_CHARS for s in v):
             raise ValueError("Steps must be concise")
         return v
