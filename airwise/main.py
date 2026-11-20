@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from . import config
 from .ai import AiUnavailableError, configured, personalize
 from .data import ProviderError, fetch_air, search_locations
-from .models import AskRequest, Location, PlanRequest, Snapshot
+from .models import AskRequest, Location, PlanRequest, PolicyResult, Profile, Snapshot
 from .policy import generate_policy
 from .security import RateGate, apply_headers, reject_unsafe_request
 
@@ -95,6 +95,24 @@ async def air(request: Request, location: Location) -> dict[str, Any]:
     return snapshot.model_dump()
 
 
+async def optional_briefing(
+    request: Request, snapshot: Snapshot, profile: Profile, policy: PolicyResult, started: float
+) -> tuple[dict[str, Any] | None, str]:
+    """The Gemini briefing and its status. The plan is returned either way, so AI problems only
+    change the status: rate limited, out of time and Gemini failures all report "unavailable"."""
+    try:
+        limit(request, "ai")
+    except HTTPException:
+        return None, "unavailable"
+    if ai_budget(started) < config.MIN_AI_BUDGET_S:
+        return None, "unavailable"
+    try:
+        reply = await personalize(snapshot, profile, policy, budget_s=ai_budget(started))
+    except AiUnavailableError:
+        return None, "unavailable"
+    return reply.model_dump(), "generated"
+
+
 @app.post("/api/plan")
 async def plan(request: Request, body: PlanRequest) -> dict[str, Any]:
     started = time.monotonic()
@@ -105,14 +123,7 @@ async def plan(request: Request, body: PlanRequest) -> dict[str, Any]:
     policy = generate_policy(snapshot, body.profile)
     ai, ai_status = None, "not_requested"
     if body.ai_consent:
-        ai_status = "unavailable"
-        try:
-            limit(request, "ai")
-            if ai_budget(started) >= config.MIN_AI_BUDGET_S:
-                reply = await personalize(snapshot, body.profile, policy, budget_s=ai_budget(started))
-                ai, ai_status = reply.model_dump(), "generated"
-        except (AiUnavailableError, HTTPException):
-            pass
+        ai, ai_status = await optional_briefing(request, snapshot, body.profile, policy, started)
     return {
         "snapshot": snapshot.model_dump(),
         "policy": policy.model_dump(),

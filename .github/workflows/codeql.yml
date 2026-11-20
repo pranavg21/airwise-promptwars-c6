@@ -32,7 +32,7 @@ jobs:
         with:
           category: /language:${{ matrix.language }}
           output: codeql-results
-      - name: List findings in the log
+      - name: Fail on any finding
         run: |
           python3 - <<'PY'
           import glob, json
@@ -43,4 +43,5 @@ jobs:
               print(f'{r.get("level", "warning")} {r["ruleId"]} {where["artifactLocation"]["uri"]}:'
                     f'{where.get("region", {}).get("startLine")} {r["message"]["text"][:160]}')
           print(f"{len(results)} CodeQL findings")
+          raise SystemExit(1 if results else 0)
           PY
