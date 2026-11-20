@@ -112,6 +112,18 @@ From the owner's deployment report; not independently re-run from this repositor
 | Other checks | Health and security headers; keyboard search, Escape and selection; family plan with no console errors; no overflow at 390 px; repeated on the public URL |
 | Gemini | No calls |
 
+### Final release rollout, 20 November 2026 (IST)
+
+From the owner's deployment report; not independently re-run from this repository. This revision serves production at the time of writing.
+
+| Item | Reported result |
+|---|---|
+| Revision | `airwise-promptwars-c6-00012-foq`, built from a clean checkout of `54c8155`, tested at a tagged URL with no traffic, then promoted to 100%; `00010-kap` kept for rollback; configuration identical to before |
+| HTTP | `HEAD /`, `/favicon.ico` and `/api/health` return 200; the favicon is `image/svg+xml`; no header names the server software; HSTS, CSP, COOP and CORP present |
+| Outlook | Live Pune `/api/air` returned 24 outlook hours within 24 hours of the model time; `outlook_lowest` matched; the dashboard table showed the same 24 rows |
+| Browser | No console errors or failed requests on load; "St. John's" search works; keyboard search, Escape and selection work; family plan builds; no overflow at 390 px. Repeated on the public URL |
+| Gemini | No calls |
+
 These are single observations, not guarantees of availability or response time. Readings vary with each forecast and must not be presented as current.
 
 Re-run a hosted check with `python scripts/smoke_host.py https://YOUR-HOST` (no Gemini calls). Adding `--ai` sends three real Gemini requests from the daily allowance, and its 60-second client timeout is longer than the browser's 25 seconds.
