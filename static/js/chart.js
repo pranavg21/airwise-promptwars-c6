@@ -1,5 +1,4 @@
 /** Accessible SVG chart and data table for the 24-hour outlook; no dependencies, no HTML injection. */
-import { hasFiniteAqi } from "./forecast.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const WIDTH = 600;
@@ -14,6 +13,14 @@ const POINT_EVERY_HOURS = 3;
 const LINE_COLOR = "#6eaa3a";
 const POINT_COLOR = "#75b644";
 const GRID_COLOR = "#e4e9e2";
+
+/**
+ * Whether an hour has a plottable AQI value.
+ * @param {{us_aqi: unknown}} hour
+ */
+export function hasFiniteAqi(hour) {
+  return typeof hour.us_aqi === "number" && Number.isFinite(hour.us_aqi);
+}
 
 function svgNode(tag, attributes = {}) {
   const element = document.createElementNS(SVG_NS, tag);

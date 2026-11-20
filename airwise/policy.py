@@ -9,28 +9,15 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from . import catalog, config
+from . import catalog
 from .aqi import Concern, classify
 from .models import Advice, Hour, PolicyResult, Profile, Shift, Snapshot
 
-__all__ = ["classify", "find_lower_hour", "generate_policy", "upcoming_hours"]
+__all__ = ["classify", "find_lower_hour", "generate_policy"]
 
 MINUTES_PER_HOUR = 60
 # Display rule, not a clinical threshold: smaller modeled differences are not worth a schedule change.
 MIN_SHIFT_DIFFERENCE_PCT = 5.0
-
-
-def upcoming_hours(snapshot: Snapshot, hours: int = config.OUTLOOK_HOURS) -> list[Hour]:
-    """Compare matching local timestamps; never compare a past forecast to the present."""
-    try:
-        now = datetime.fromisoformat(snapshot.model_time)
-        end = now + timedelta(hours=hours)
-        return sorted(
-            (h for h in snapshot.hourly if now <= datetime.fromisoformat(h.time) < end),
-            key=lambda h: h.time,
-        )
-    except (ValueError, TypeError):
-        return []
 
 
 @dataclass(frozen=True)
@@ -62,16 +49,10 @@ def activity_windows(hours: list[Hour], duration: int) -> list[ActivityWindow]:
     return windows
 
 
-def lowest_aqi_hour(hours: list[Hour]) -> Hour | None:
-    """The earliest hour with the lowest modeled US AQI; hours without AQI are ignored."""
-    rated = [(h.us_aqi, index, h) for index, h in enumerate(hours) if h.us_aqi is not None]
-    return min(rated)[2] if rated else None
-
-
 def find_lower_hour(snapshot: Snapshot, profile: Profile) -> tuple[Hour | None, Shift | None]:
     """Lowest-AQI hour, and a better start time for the whole activity when one clearly exists."""
-    hours = upcoming_hours(snapshot)
-    minimum = lowest_aqi_hour(hours)
+    hours = snapshot.outlook
+    minimum = snapshot.outlook_lowest
     windows = activity_windows(hours, profile.outdoor_minutes)
     planned = next(
         (w for w in windows if datetime.fromisoformat(w.start.time).hour == profile.start_hour), None

@@ -1,7 +1,6 @@
 /** The current-air panel, metric cards and 24-hour outlook. */
 import { renderChart, renderHourTable } from "./chart.js";
 import { $, clock, safeNumber } from "./dom.js";
-import { currentHours, lowestHour } from "./forecast.js";
 
 const READING_IDS = ["aqiValue", "pm25", "pm10", "bestAQI", "aqiTime", "bestTime"];
 
@@ -50,8 +49,10 @@ function renderCurrent(snapshot) {
     `Open-Meteo/CAMS model · ${time}; fetched ${new Date(snapshot.retrieved_at).toLocaleString()}`;
 }
 
-function renderOutlook(hours) {
-  const lowest = lowestHour(hours);
+/** The server decides which hours form the outlook (airwise/forecast.py); the browser only draws them. */
+function renderOutlook(snapshot) {
+  const hours = snapshot.outlook ?? [];
+  const lowest = snapshot.outlook_lowest;
   $("bestAQI").textContent = lowest ? safeNumber(lowest.us_aqi) : "—";
   $("bestTime").textContent = lowest
     ? `${clock(lowest.time)} local · not necessarily safe`
@@ -66,5 +67,5 @@ function renderOutlook(hours) {
  */
 export function displaySnapshot(snapshot) {
   renderCurrent(snapshot);
-  renderOutlook(currentHours(snapshot));
+  renderOutlook(snapshot);
 }

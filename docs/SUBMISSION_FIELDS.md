@@ -26,7 +26,7 @@ Google Gemini Developer API (gemini-2.5-flash) is used server-side, only after t
 
 ### LinkedIn Post URL
 
-`https://www.linkedin.com/posts/YOUR-ACTUAL-PUBLISHED-POST` (publish first; URL must be real)
+Submitted in the portal with Attempt 2. Reuse the same published post URL for any later attempt.
 
 #### Draft LinkedIn post (in Pranav Ghadge's voice)
 

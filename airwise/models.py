@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from .aqi import Concern, band
+from .forecast import lowest_aqi_hour, upcoming_hours
 
 Priority = Literal["school", "commute", "exercise", "home", "community"]
 STEP_MIN_CHARS = 4
@@ -81,6 +82,18 @@ class Snapshot(StrictModel):
     def category_key(self) -> str:
         """Stable key the browser uses to colour the category."""
         return band(self.us_aqi).key
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def outlook(self) -> list[Hour]:
+        """The next 24 hours by elapsed time; the dashboard and the planner both use exactly these."""
+        return upcoming_hours(self.model_time, self.hourly)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def outlook_lowest(self) -> Hour | None:
+        """Earliest outlook hour with the lowest modeled US AQI."""
+        return lowest_aqi_hour(self.outlook)
 
 
 class PlanRequest(StrictModel):

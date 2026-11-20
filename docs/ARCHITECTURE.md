@@ -33,7 +33,7 @@ sequenceDiagram
 
 `Location` accepts name, optional country/region and WGS84 latitude/longitude, not arbitrary URLs. `Profile` accepts only four personas, five priorities, three budget bands, two languages, boolean sensitivity flags and bounded outdoor activity time. Unknown fields are rejected by default.
 
-`Snapshot` carries `model_time`, `retrieved_at`, provider source, AQI index type, the five current modeled parameters and at most 72 `Hour` records. The API makes no promise of an individual street-level or inside-home reading.
+`Snapshot` carries `model_time`, `retrieved_at`, provider source, AQI index type, the five current modeled parameters and at most 72 `Hour` records. It also returns computed `category`, `category_key`, `outlook` (forecast hours within 24 elapsed hours of the model time, from `airwise/forecast.py`) and `outlook_lowest`. The planner uses the same outlook, so the dashboard can never offer a lower hour than the plan considered, even when an upstream hour is missing. The API makes no promise of an individual street-level or inside-home reading.
 
 `PolicyResult` contains `category`, `concern`, `sensitive`, `cards`, `swaps`, optional best hour and shift, trace statements, and a fixed safety disclaimer. These are authored by a deterministic engine and never overwritten by the generative model. Recommendation text and sources live in `airwise/catalog.py`; `airwise/policy.py` holds the ordered rules that select them.
 

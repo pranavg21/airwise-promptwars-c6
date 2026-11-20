@@ -103,11 +103,12 @@ The code default and the deployed model are `gemini-2.5-flash`. The identifier i
 | `airwise/config.py` | Environment settings and every operating limit, with units |
 | `airwise/data.py` | Open-Meteo geocoding and air-quality client: fixed hosts, timeouts, validation, caching |
 | `airwise/aqi.py` | US EPA AQI categories, defined once |
+| `airwise/forecast.py` | The 24-hour outlook (by elapsed time) and its lowest hour, defined once for the dashboard and the planner |
 | `airwise/policy.py` | Ordered rules that select recommendations; duration-weighted timing comparison |
 | `airwise/catalog.py` | Recommendation text, sources and decision-trace messages |
 | `airwise/ai.py` | Gemini adapter: minimized context, schema and numeric-claim validation, deadline, answer cache, fallback model, failure diagnostics |
 | `airwise/models.py` | Pydantic contracts for every request, forecast and response |
-| `static/js/` | One module per job: `app.js` wiring, `city-search.js`, `readings.js`, `plan.js`, `plan-view.js`, `chart.js`, `brief.js`, `forecast.js`, `transport.js` |
+| `static/js/` | One module per job: `app.js` wiring, `city-search.js`, `readings.js`, `plan.js`, `plan-view.js`, `chart.js`, `brief.js`, `transport.js` |
 | `static/css/` | Seven stylesheets in cascade order, from `base.css` tokens to `responsive.css` |
 
 ## 5. Run the quality gates

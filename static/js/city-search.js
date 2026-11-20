@@ -24,6 +24,16 @@ export function dismissResults() {
   setResultsOpen(false);
 }
 
+/**
+ * The geocoding request for a typed city name. URLSearchParams escapes apostrophes and brackets,
+ * which encodeURIComponent leaves as they are (for example "St. John's" or "L'Aquila").
+ * @param {string} query
+ * @returns {string}
+ */
+export function cityQueryPath(query) {
+  return `/api/geo?${new URLSearchParams({ q: query })}`;
+}
+
 /** @param {{region?: string, country: string}} city */
 export function placeLabel(city) {
   return `${city.region ? `${city.region}, ` : ""}${city.country}`;
@@ -67,7 +77,7 @@ async function searchCity(onSelect) {
   $("cityResults").replaceChildren(node("p", "Searching cities...", "field-help"));
   announce("Searching cities...");
   try {
-    const payload = await getJson(`/api/geo?q=${encodeURIComponent(query)}`);
+    const payload = await getJson(cityQueryPath(query));
     if (version === state.searchVersion) showResults(payload.results, onSelect);
   } catch (error) {
     if (version !== state.searchVersion) return;

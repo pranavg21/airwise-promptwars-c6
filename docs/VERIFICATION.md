@@ -32,7 +32,8 @@ What the automated suite covers:
 - Gemini answer reuse within 15 minutes, failures never cached, a 40-second deadline, the optional fallback model, and failure logs that name the reason and status without the key, question or reply (`tests/test_ai_resilience.py`)
 - Security headers on pages, API and static files; cross-site API writes rejected; malformed `Content-Length`; `Retry-After` on rate limits (`tests/test_security.py`)
 - Browser modules without DOM side effects: number and time formatting, forecast window and lowest hour, place labels, and a community brief that never carries household health choices (`tests/js/pure-modules.test.js`)
-- Browser: city selection, profile change clearing the plan, a delayed plan response arriving after a city change, a provider outage, and horizontal overflow at 390 px (`scripts/browser_check.py`, synthetic air data, no Gemini)
+- Browser: city selection, profile change clearing the plan, a delayed plan response arriving after a city change, a provider outage, horizontal overflow at 390 px, an incomplete forecast whose lowest reading lies exactly 24 hours ahead (the dashboard must show the in-window lowest), a city name with an apostrophe, and a delayed Gemini answer discarded after the settings change (`scripts/browser_check.py`, synthetic air data, mocked city search and Gemini)
+- The 24-hour outlook counted by elapsed time, with `/api/air` and `/api/plan` returning the same hours and lowest hour for an incomplete forecast; an apostrophe city query reaching the geocoder intact (`tests/test_forecast.py`)
 - Accessibility, in the mocked CI walkthrough: zero axe violations for a built plan, the same plan with every disclosure open, open city suggestions, and an AI briefing and answer rendered from mocked Gemini responses, each at 1366 px and 390 px; a keyboard user can reach city search with a visible focus indicator, open and move through suggestions, dismiss them with Escape, select Pune, and continue to build a plan; a city search dismissed by Escape or by a click outside before it responds stays closed and silent (`scripts/a11y_check.py`)
 
 ### Checks run locally for the quality release (not in CI)
@@ -46,7 +47,6 @@ What it does not cover:
 
 - Real Gemini output quality or relevance, latency, or current quota
 - Rendering of live Gemini output in the browser. The CI walkthrough renders only a mocked briefing and answer
-- The `/api/ask` stale-response guard (a late answer arriving after the user changes city or settings)
 - The 45-second browser timeout against a slow server
 - Screen-reader output, keyboard use beyond the city search flow, and touch-target size; axe checks rendered states only, not every interaction
 
@@ -85,6 +85,16 @@ From the owner's deployment report; not independently re-run from this repositor
 | Gemini | Briefing 21.7 s, question 6.91 s, repeated question 0.53 s from the answer cache (2 live calls); no `gemini_unavailable` log lines |
 | Follow-up | The 21.7 s briefing was close to the 22 s budget, so the budget was raised to 40 s and the browser wait to 45 s |
 
+### Time-budget rollout, 20 November 2026 (IST)
+
+From the owner's deployment report; not independently re-run from this repository.
+
+| Item | Reported result |
+|---|---|
+| Revision | `airwise-promptwars-c6-00008-cid`, built from a clean checkout of `305eb67`, tested at a tagged URL with no traffic, then promoted to 100%; `00006-fow` kept for rollback; configuration identical to before |
+| Checks | Health and security headers; public `/static/js/transport.js` serves `REQUEST_TIMEOUT_MS = 45_000`; keyboard city search and selection; family plan with no console errors; no overflow at 390 px |
+| Gemini | No calls; the 40-second server budget is covered by CI tests, not by a live call |
+
 These are single observations, not guarantees of availability or response time. Readings vary with each forecast and must not be presented as current.
 
 Re-run a hosted check with `python scripts/smoke_host.py https://YOUR-HOST` (no Gemini calls). Adding `--ai` sends three real Gemini requests from the daily allowance, and its 60-second client timeout is longer than the browser's 25 seconds.
@@ -96,7 +106,7 @@ Re-run a hosted check with `python scripts/smoke_host.py https://YOUR-HOST` (no 
 | Blocker | Repository is public, has exactly one branch, latest commit has a green CI run | Check signed out before submitting |
 | Blocker | Deployed app loads signed out; `/api/health` shows `status: ok`, `ai_configured: true` | Check signed out before submitting |
 | Blocker | Demo video under four minutes plays signed out | [Published demo, 2:48](https://youtu.be/TvnFK4hocVI). Signed-out playback still needs confirmation. |
-| Blocker | LinkedIn post URL opens signed out | Requires publishing |
+| Blocker | LinkedIn post URL opens signed out | Post URL submitted with Attempt 2; confirm it opens signed out |
 | High | Gemini quota and tier for the key-owning project are known | Check in Google AI Studio |
 | High | Keyboard walkthrough of city search and plan building | Automated in CI (`scripts/a11y_check.py`) |
 | Medium | Screen-reader pass (NVDA or VoiceOver) | Manual |

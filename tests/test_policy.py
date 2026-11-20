@@ -1,5 +1,5 @@
 from airwise.models import Profile
-from airwise.policy import classify, find_lower_hour, generate_policy, upcoming_hours
+from airwise.policy import classify, find_lower_hour, generate_policy
 
 
 def test_aqi_boundaries():
@@ -63,7 +63,7 @@ def test_no_fabricated_shift_for_zero_time_or_unimproved_air(snapshot):
 
 
 def test_only_future_hours_are_compared(snapshot):
-    hours = upcoming_hours(snapshot)
+    hours = snapshot.outlook
     assert len(hours) == 24
     assert hours[0].time == "2026-11-17T06:00"
 

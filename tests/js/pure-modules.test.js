@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { communityBrief } from "../../static/js/brief.js";
-import { placeLabel } from "../../static/js/city-search.js";
+import { cityQueryPath, placeLabel } from "../../static/js/city-search.js";
 import { clock, safeNumber } from "../../static/js/dom.js";
-import { currentHours, hasFiniteAqi, lowestHour } from "../../static/js/forecast.js";
+import { hasFiniteAqi } from "../../static/js/chart.js";
+import { isApiPath } from "../../static/js/transport.js";
 
 const hour = (time, us_aqi) => ({ time: `2026-11-20T${time}`, us_aqi, pm2_5: 30 });
 
@@ -26,37 +27,26 @@ describe("clock", () => {
   });
 });
 
-describe("currentHours", () => {
-  it("starts at the model time and keeps at most 24 hours", () => {
-    const hourly = Array.from({ length: 30 }, (_, i) => ({
-      time: `2026-11-20T${String(i).padStart(2, "0")}:00`,
-    }));
-    const hours = currentHours({ model_time: "2026-11-20T03:00", hourly });
-    assert.equal(hours.length, 24);
-    assert.equal(hours[0].time, "2026-11-20T03:00");
-  });
-
-  it("returns nothing when the forecast is missing", () => {
-    assert.deepEqual(currentHours(null), []);
-    assert.deepEqual(currentHours({ model_time: "2026-11-20T03:00" }), []);
-  });
-});
-
-describe("lowestHour", () => {
-  it("picks the earliest hour with the lowest AQI and skips missing values", () => {
-    const hours = [hour("08:00", 140), hour("09:00", null), hour("10:00", 103), hour("11:00", 103)];
-    assert.equal(lowestHour(hours).time, "2026-11-20T10:00");
-  });
-
-  it("returns null when no hour has an AQI", () => {
-    assert.equal(lowestHour([hour("08:00", null)]), null);
-    assert.equal(lowestHour([]), null);
-  });
-
+describe("hasFiniteAqi", () => {
   it("treats only finite numbers as chartable", () => {
     assert.equal(hasFiniteAqi(hour("08:00", 90)), true);
     assert.equal(hasFiniteAqi(hour("08:00", Number.NaN)), false);
     assert.equal(hasFiniteAqi(hour("08:00", null)), false);
+  });
+});
+
+describe("city search requests", () => {
+  it("produces a valid API path for real city names, including apostrophes", () => {
+    for (const name of ["Pune", "São Paulo", "St. John's", "L'Aquila", "Xi'an", "Saint-Étienne (Loire)"]) {
+      const path = cityQueryPath(name);
+      assert.ok(isApiPath(path), `${name} -> ${path}`);
+      assert.equal(new URL(path, "http://local").searchParams.get("q"), name);
+    }
+  });
+
+  it("still rejects paths outside the API", () => {
+    assert.equal(isApiPath("https://example.com/api/geo"), false);
+    assert.equal(isApiPath("/api/geo?q=<script>"), false);
   });
 });
 

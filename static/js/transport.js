@@ -3,7 +3,8 @@
 // The server finishes or abandons AI work within 40 s (airwise/config.py REQUEST_BUDGET_S).
 const REQUEST_TIMEOUT_MS = 45_000;
 const MAX_ERROR_CHARS = 250;
-const API_PATH = /^\/api\/[a-z]+(?:\?[a-z0-9=&%+._-]+)?$/i;
+// A same-origin API path, optionally with a URLSearchParams-encoded query.
+const API_PATH = /^\/api\/[a-z]+(?:\?[a-z0-9=&%+._*-]+)?$/i;
 
 /**
  * The server's error message for a failed response, or its HTTP status.
@@ -22,13 +23,21 @@ async function errorMessage(response) {
 }
 
 /**
+ * @param {string} path
+ * @returns {boolean}
+ */
+export function isApiPath(path) {
+  return API_PATH.test(path);
+}
+
+/**
  * Fetch JSON from this app's API. Rejects with a readable message on error or timeout.
  * @param {string} path An /api/ path, optionally with a simple query string.
  * @param {RequestInit} [options]
  * @returns {Promise<any>}
  */
 export async function getJson(path, options = {}) {
-  if (!API_PATH.test(path)) throw new Error("Invalid API path");
+  if (!isApiPath(path)) throw new Error("Invalid API path");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
