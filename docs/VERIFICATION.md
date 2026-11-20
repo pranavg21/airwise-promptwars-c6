@@ -127,7 +127,7 @@ From the owner's deployment report; not independently re-run from this repositor
 
 ### Grounded timing rollout, 20 November 2026 (IST)
 
-From the owner's deployment report; not independently re-run from this repository. This revision serves production at the time of writing.
+From the owner's deployment report; not independently re-run from this repository.
 
 | Item | Reported result |
 |---|---|
@@ -136,6 +136,17 @@ From the owner's deployment report; not independently re-run from this repositor
 | Gemini (2 live calls, tagged URL) | Pune, family, children, 08:00, 120 minutes. The comparison card showed no complete 120-minute alternative meeting the criteria (lowest single hour 00:00, AQI 123). The briefing was generated and named no time. The answer to "Why should I move my two-hour outing?" was generated and said there was no specific timing recommendation. Neither contradicted the card. No `gemini_unavailable` log lines |
 | Gemini with a recommended time (2 more live calls, public URL) | Pune, family, children, 06:00, 120 minutes. The card recommended 04:00 (62.1 → 57.8 µg/m³, 7.0% lower). The briefing said "starting around four in the morning"; the answer said "around the pre-dawn hours" and offered reduced intensity or indoor alternatives if an earlier start is impractical. Neither named a different time. No `gemini_unavailable` log lines |
 | Known limitation | The comparison considers every forecast hour, including pre-dawn hours, and does not know the household's waking hours |
+
+### Answer-fallback rollout, 21 November 2026 (IST)
+
+From the owner's deployment report; not independently re-run from this repository. This revision serves production at the time of writing.
+
+| Item | Reported result |
+|---|---|
+| Revision | `airwise-promptwars-c6-00016-xoc`, built from a clean checkout of `f29f45a` after its Quality Gate and CodeQL runs passed, tested at a tagged URL with no traffic, then promoted to 100%; `00014-xem` kept for rollback; configuration identical to before |
+| Checks with Gemini off | The previous rollout's HTTP, outlook and browser checks, plus the AI status label reading "CONFIGURED · OPT IN" before a plan is built; on the tagged URL and again on the public URL after promotion |
+| Gemini (2 live calls, tagged URL) | Pune, family, children, 08:00, 120 minutes; the card showed no complete alternative meeting the criteria. The briefing and the answer to "Should we move our two-hour outing?" were generated, both said the forecast does not support recommending a different start, named no time of day, and did not call the planned time safe. No `gemini_unavailable` log lines |
+| Not covered live | The answer fallback ("Build plan without Gemini", "Go to my rule-based plan") appears only when Gemini fails, so it is covered by `scripts/browser_check.py` with a mocked failure, not by a live call |
 
 These are single observations, not guarantees of availability or response time. Readings vary with each forecast and must not be presented as current.
 
