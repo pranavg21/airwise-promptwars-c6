@@ -23,12 +23,14 @@ Recorded results:
 What the automated suite covers:
 
 - Duration-weighted timing windows, partial final hours, incomplete forecasts and the peak-AQI rule (`tests/test_windows.py`, `tests/test_policy.py`)
+- AQI categories at every boundary and when AQI is missing, with `/api/air` and `/api/plan` reporting the same category (`tests/test_aqi.py`)
+- Cards, swaps and their order for each persona; catalog entries cannot be modified at runtime (`tests/test_policy_rules.py`)
 - Forecast parsing, missing and out-of-range values, provider outages (`tests/test_data.py`, `tests/test_api.py`)
 - Consent enforcement, AI fallback on `/api/plan`, preferences reaching Gemini only with consent (`tests/test_workflow.py`)
 - `/api/ask` success, forecast outage, missing key, truncated model output, and an upstream HTTP 429 quota rejection on both `/api/ask` and `/api/plan`, using the real Gemini adapter against an in-process mock transport (`tests/test_ask.py`)
 - Structured-output validation and the numeric-claim text guard, including Hindi (`tests/test_ai.py`, `tests/test_windows.py`)
 - Browser: city selection, profile change clearing the plan, a delayed plan response arriving after a city change, a provider outage, and horizontal overflow at 390 px (`scripts/browser_check.py`, synthetic air data, no Gemini)
-- Accessibility, in the mocked CI walkthrough: zero axe violations for a built plan, the same plan with every disclosure open, open city suggestions, and an AI briefing and answer rendered from mocked Gemini responses, each at 1366 px and 390 px; a keyboard user can reach city search with a visible focus indicator, open and move through suggestions, dismiss them with Escape, select Pune, and continue to build a plan (`scripts/a11y_check.py`)
+- Accessibility, in the mocked CI walkthrough: zero axe violations for a built plan, the same plan with every disclosure open, open city suggestions, and an AI briefing and answer rendered from mocked Gemini responses, each at 1366 px and 390 px; a keyboard user can reach city search with a visible focus indicator, open and move through suggestions, dismiss them with Escape, select Pune, and continue to build a plan; a city search dismissed by Escape or by a click outside before it responds stays closed and silent (`scripts/a11y_check.py`)
 
 What it does not cover:
 

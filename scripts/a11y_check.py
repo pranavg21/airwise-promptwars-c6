@@ -112,6 +112,42 @@ async def keyboard_walkthrough(page: Page, problems: list[str]) -> None:
     await expect(page.locator("#recommendations .advice-card").first).to_be_visible()
 
 
+async def stale_search_dismissal(page: Page, dismiss: str, problems: list[str]) -> None:
+    """Dismiss suggestions before the city search responds; the late response must stay silent."""
+    started, release, delivered = asyncio.Event(), asyncio.Event(), asyncio.Event()
+
+    async def hold(route) -> None:  # noqa: ANN001
+        response = await route.fetch()
+        started.set()
+        await release.wait()
+        await route.fulfill(response=response)
+        delivered.set()
+
+    await page.route("**/api/geo*", hold)
+    await page.locator("#citySearch").focus()
+    await page.keyboard.type("Pune")
+    await page.keyboard.press("Enter")
+    await asyncio.wait_for(started.wait(), 5)
+    if dismiss == "Escape":
+        await page.keyboard.press("Escape")
+    else:
+        await page.locator("#heroTitle").click()
+    release.set()
+    await asyncio.wait_for(delivered.wait(), 5)
+    await page.wait_for_timeout(300)
+    label = f"dismissed by {dismiss} before results arrived"
+    if await page.locator("#cityResults").is_visible():
+        problems.append(f"Suggestions reopen after being {label}")
+    if dismiss == "Escape" and await page.evaluate("() => document.activeElement?.id") != "citySearch":
+        problems.append(f"Focus leaves the search field after being {label}")
+    if await page.locator("#citySearchBtn").get_attribute("aria-expanded") != "false":
+        problems.append(f"aria-expanded=true after suggestions were {label}")
+    status = await page.locator("#cityStatus").text_content() or ""
+    if "matching" in status or "Down Arrow" in status:
+        problems.append(f"Results still announced after being {label}: {status!r}")
+    await page.unroute("**/api/geo*")
+
+
 async def run() -> int:
     results: dict[str, Counter] = {}
     problems: list[str] = []
@@ -150,6 +186,9 @@ async def run() -> int:
                     await page.goto(base)
                     before = len(problems)
                     await keyboard_walkthrough(page, problems)
+                    for dismiss in ("Escape", "a click outside"):
+                        await page.goto(base)
+                        await stale_search_dismissal(page, dismiss, problems)
                     problems[before:] = [f"{width}px: {p}" for p in problems[before:]]
                     await page.close()
                 await browser.close()
@@ -166,7 +205,8 @@ async def run() -> int:
     for problem in problems:
         print(f"FAIL keyboard {problem}")
     if not problems:
-        print("PASS keyboard: search, suggestion navigation, Escape, selection and form continuation")
+        print("PASS keyboard: search, suggestion navigation, Escape, selection, form continuation"
+              " and dismissal of a pending search")
     print(f"Gemini mock calls: {gemini.await_count} (no live provider calls)")
     return 1 if failed else 0
 

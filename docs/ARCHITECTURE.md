@@ -35,13 +35,13 @@ sequenceDiagram
 
 `Snapshot` carries `model_time`, `retrieved_at`, provider source, AQI index type, the five current modeled parameters and at most 72 `Hour` records. The API makes no promise of an individual street-level or inside-home reading.
 
-`PolicyResult` contains `category`, `concern`, `sensitive`, `cards`, `swaps`, optional best hour and shift, trace statements, and a fixed safety disclaimer. These are authored by a deterministic engine and never overwritten by the generative model.
+`PolicyResult` contains `category`, `concern`, `sensitive`, `cards`, `swaps`, optional best hour and shift, trace statements, and a fixed safety disclaimer. These are authored by a deterministic engine and never overwritten by the generative model. Recommendation text and sources live in `airwise/catalog.py`; `airwise/policy.py` holds the ordered rules that select them.
 
 `AiResponse` carries three plain-text outputs — summary, 2–5 steps and rationale — within strict length limits. The UI always uses `textContent` and DOM nodes to render them.
 
 ## AQI interpretation
 
-Open-Meteo exposes **US EPA AQI** indices. The project uses the following categories: Good 0–50; Moderate 51–100; Unhealthy for Sensitive Groups 101–150; Unhealthy 151–200; Very Unhealthy 201–300; Hazardous ≥301. **These are US scale categories, not India's CPCB six-category AQI system.**
+Open-Meteo exposes **US EPA AQI** indices. Categories are defined once, in `airwise/aqi.py`; every forecast the API returns carries its `category` and a `category_key` that the browser maps to a colour, so the dashboard and the plan cannot disagree. The project uses the following categories: Good 0–50; Moderate 51–100; Unhealthy for Sensitive Groups 101–150; Unhealthy 151–200; Very Unhealthy 201–300; Hazardous ≥301. **These are US scale categories, not India's CPCB six-category AQI system.**
 
 CAMS global modeled data have coarse horizontal resolution (documentation identifies around 45 km grid scale). On a road corner, schools' entrances or inside apartments, the actual air can differ substantially. `model_time` is a model point's valid time, not a promise of physical sensor observation. `retrieved_at` is when our server fetched it.
 

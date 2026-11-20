@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+
+from .aqi import Concern, band
 
 
 class StrictModel(BaseModel):
@@ -59,6 +61,18 @@ class Snapshot(StrictModel):
     scale: str = "US EPA AQI (NOT CPCB India AQI)"
     data_kind: str = "Modeled estimate / forecast, not a local monitor measurement"
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def category(self) -> str:
+        """US EPA category of the current AQI, shared with the policy engine."""
+        return band(self.us_aqi).label
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def category_key(self) -> str:
+        """Stable key the browser uses to colour the category."""
+        return band(self.us_aqi).key
+
 
 class PlanRequest(StrictModel):
     location: Location
@@ -71,6 +85,10 @@ class AskRequest(PlanRequest):
 
 
 class Advice(StrictModel):
+    """One recommendation. Frozen because catalog entries are shared between plans."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, frozen=True)
+
     id: str
     title: str
     detail: str
@@ -91,7 +109,7 @@ class Shift(StrictModel):
 
 class PolicyResult(StrictModel):
     category: str
-    concern: Literal["low", "moderate", "high", "very_high", "unknown"]
+    concern: Concern
     headline: str
     sensitive: bool
     cards: list[Advice]

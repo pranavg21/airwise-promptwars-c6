@@ -18,6 +18,11 @@ function setResultsOpen(open) {
   $('citySearchBtn').setAttribute('aria-expanded', String(open));
 }
 function announceCity(message) {$('cityStatus').textContent = message;}
+// Closing the suggestions also cancels a search that has not answered yet.
+function dismissResults() {
+  searchSequence++;
+  setResultsOpen(false);
+}
 function conciseError(err) {return err instanceof Error ? err.message : 'Something went wrong. Please retry.';}
 function showNotice(message, error=false) {
   const alert = $('notice'); alert.textContent = message; alert.hidden = !message;
@@ -47,6 +52,7 @@ function resetReadings() {
   for (const id of ['aqiValue', 'pm25', 'pm10', 'bestAQI', 'aqiTime', 'bestTime']) $(id).textContent = '—';
   $('feedStatus').textContent = 'AWAITING DATA';
   $('aqiCategory').textContent = 'Awaiting forecast';
+  delete $('aqiCategory').dataset.band;
   $('dataStamp').textContent = 'No forecast loaded';
   $('chart').replaceChildren();
   $('hourlyTable').replaceChildren();
@@ -84,9 +90,9 @@ function displaySnapshot(s) {
   state.snapshot = s;
   $('aqiValue').textContent = safeNumber(s.us_aqi);
   $('feedStatus').textContent = 'LATEST MODEL ESTIMATE';
-  const {category, severity} = classifyAqi(s.us_aqi);
-  $('aqiCategory').textContent = category;
-  $('aqiCategory').style.color = severity === 0 ? '#a9efb9' : severity === 1 ? '#e9e183' : severity === 2 ? '#ffc48e' : '#ffc2ba';
+  // The server classifies AQI (airwise/aqi.py); the browser only maps the key to a colour.
+  $('aqiCategory').textContent = s.category;
+  $('aqiCategory').dataset.band = s.category_key;
   $('aqiTime').textContent = `${clock(s.model_time)} · ${s.timezone} local`;
   $('pm25').textContent = safeNumber(s.pm2_5, 1);
   $('pm10').textContent = safeNumber(s.pm10, 1);
@@ -101,15 +107,6 @@ function displaySnapshot(s) {
   } else {$('bestAQI').textContent = '—'; $('bestTime').textContent = 'No valid 24-hour forecast';}
   renderChart($('chart'), hours);
   renderHourTable($('hourlyTable'), hours);
-}
-function classifyAqi(v) {
-  if (typeof v !== 'number') return {category:'AQI unavailable',severity:3};
-  if (v<=50)return {category:'Good',severity:0};
-  if (v<=100)return {category:'Moderate',severity:1};
-  if (v<=150)return {category:'Unhealthy for sensitive groups',severity:2};
-  if (v<=200)return {category:'Unhealthy',severity:3};
-  if (v<=300)return {category:'Very unhealthy',severity:3};
-  return {category:'Hazardous',severity:3};
 }
 async function loadSnapshot() {
   if (state.pendingCity) return;
@@ -212,16 +209,16 @@ function bindEvents() {
   $('citySearch').addEventListener('keydown',e=>{
     if(e.key==='Enter'){e.preventDefault();void searchCity();}
     if(e.key==='ArrowDown' && !$('cityResults').hidden){e.preventDefault();$('cityResults').querySelector('button')?.focus();}
-    if(e.key==='Escape'){setResultsOpen(false);}
+    if(e.key==='Escape'){dismissResults();}
   });
   $('cityResults').addEventListener('keydown',e=>{
     const buttons=[...$('cityResults').querySelectorAll('button')];const pos=buttons.indexOf(document.activeElement);
     if(e.key==='ArrowDown'){e.preventDefault();buttons[Math.min(pos+1,buttons.length-1)]?.focus();}
     if(e.key==='ArrowUp'){e.preventDefault();if(pos===0)$('citySearch').focus();else buttons[Math.max(0,pos-1)]?.focus();}
-    if(e.key==='Escape'){setResultsOpen(false);$('citySearch').focus();}
+    if(e.key==='Escape'){dismissResults();$('citySearch').focus();}
   });
   document.querySelectorAll('[data-city]').forEach(b=>b.addEventListener('click',()=>setLocation(EXAMPLES[b.dataset.city])));
-  document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap')&&!e.target.closest('.city-results'))setResultsOpen(false);});
+  document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap')&&!e.target.closest('.city-results'))dismissResults();});
   $('aboutBtn').addEventListener('click',()=>{$('methodology').scrollIntoView({behavior:'smooth'});});
   $('refreshBtn').addEventListener('click',()=>void loadSnapshot());
   $('copyBtn').addEventListener('click',()=>void copyBrief());
