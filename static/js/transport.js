@@ -1,7 +1,7 @@
 /** Same-origin JSON requests with a deadline; the browser never contacts third-party hosts. */
 
-// The server finishes or abandons AI work within 22 s (airwise/config.py REQUEST_BUDGET_S).
-const REQUEST_TIMEOUT_MS = 25_000;
+// The server finishes or abandons AI work within 40 s (airwise/config.py REQUEST_BUDGET_S).
+const REQUEST_TIMEOUT_MS = 45_000;
 const MAX_ERROR_CHARS = 250;
 const API_PATH = /^\/api\/[a-z]+(?:\?[a-z0-9=&%+._-]+)?$/i;
 

@@ -29,7 +29,7 @@ What the automated suite covers:
 - Consent enforcement, AI fallback on `/api/plan`, preferences reaching Gemini only with consent (`tests/test_workflow.py`)
 - `/api/ask` success, forecast outage, missing key, truncated model output, and an upstream HTTP 429 quota rejection on both `/api/ask` and `/api/plan`, using the real Gemini adapter against an in-process mock transport (`tests/test_ask.py`)
 - Structured-output validation and the numeric-claim text guard, including Hindi (`tests/test_ai.py`, `tests/test_windows.py`)
-- Gemini answer reuse within 15 minutes, failures never cached, a 22-second deadline, the optional fallback model, and failure logs that name the reason and status without the key, question or reply (`tests/test_ai_resilience.py`)
+- Gemini answer reuse within 15 minutes, failures never cached, a 40-second deadline, the optional fallback model, and failure logs that name the reason and status without the key, question or reply (`tests/test_ai_resilience.py`)
 - Security headers on pages, API and static files; cross-site API writes rejected; malformed `Content-Length`; `Retry-After` on rate limits (`tests/test_security.py`)
 - Browser modules without DOM side effects: number and time formatting, forecast window and lowest hour, place labels, and a community brief that never carries household health choices (`tests/js/pure-modules.test.js`)
 - Browser: city selection, profile change clearing the plan, a delayed plan response arriving after a city change, a provider outage, and horizontal overflow at 390 px (`scripts/browser_check.py`, synthetic air data, no Gemini)
@@ -47,7 +47,7 @@ What it does not cover:
 - Real Gemini output quality or relevance, latency, or current quota
 - Rendering of live Gemini output in the browser. The CI walkthrough renders only a mocked briefing and answer
 - The `/api/ask` stale-response guard (a late answer arriving after the user changes city or settings)
-- The 25-second browser timeout against a slow server
+- The 45-second browser timeout against a slow server
 - Screen-reader output, keyboard use beyond the city search flow, and touch-target size; axe checks rendered states only, not every interaction
 
 ## Live checks on the deployed service
@@ -73,6 +73,17 @@ From the owner's deployment report; not independently re-run from this repositor
 | Desktop (1366 px), tagged and public URLs | Pune found by keyboard search; Escape dismissed suggestions and returned focus to the search field; selecting Pune kept focus on the search field; family plan generated; hourly forecast table scrolled by keyboard |
 | Mobile (390 px) | No horizontal overflow |
 | Gemini | Off throughout; no Gemini calls |
+
+### Quality release rollout, 20 November 2026 (IST)
+
+From the owner's deployment report; not independently re-run from this repository.
+
+| Item | Reported result |
+|---|---|
+| Revision | `airwise-promptwars-c6-00006-fow`, built from a clean checkout of `e24ac91`, tested at a tagged URL with no traffic, then promoted to 100%; `00004-nop` kept for rollback; configuration identical to before |
+| Checks on the tagged URL | Health and security headers; keyboard city search, Escape and selection; family plan with no console errors; keyboard-scrollable hourly table; click outside a pending search; outdoor-worker card; no overflow at 390 px |
+| Gemini | Briefing 21.7 s, question 6.91 s, repeated question 0.53 s from the answer cache (2 live calls); no `gemini_unavailable` log lines |
+| Follow-up | The 21.7 s briefing was close to the 22 s budget, so the budget was raised to 40 s and the browser wait to 45 s |
 
 These are single observations, not guarantees of availability or response time. Readings vary with each forecast and must not be presented as current.
 

@@ -50,7 +50,7 @@ flowchart LR
     Cache --> Rules[Deterministic rule engine]
     Rules --> Reasons[Personalized actions / reasons / low-emission swaps]
     Rules --> Time[24-hour lower-hour comparison]
-    Rules -->|Only on opt-in| Gemini[Gemini server-side REST, 22 s budget, 15-min answer cache]
+    Rules -->|Only on opt-in| Gemini[Gemini server-side REST, 40 s budget, 15-min answer cache]
     Gemini --> Schema[Strict validated JSON output]
     Schema --> Browser
     Reasons --> Browser
@@ -133,7 +133,7 @@ There is no client-side use of `innerHTML` to display API or GenAI strings; the 
 |---|---|
 | Code quality | Single-purpose modules (see the code map); rules separated from recommendation text; one AQI definition; `ruff` with complexity limit 10, `mypy --strict` and ESLint complexity and size limits enforced in CI; no inline styles or duplicated thresholds in the browser code |
 | Security | Key only in server environment and Secret Manager; strict Pydantic contracts reject unknown fields; fixed upstream hosts with timeouts and no redirects; CSP without inline script or style, HSTS, COOP, CORP and frame denial on every response (`tests/test_security.py`); cross-site API writes rejected; rate limits with `Retry-After`; Gemini failures logged without key, prompt or reply; `pip-audit` and `npm audit` in CI ([SECURITY.md](SECURITY.md)) |
-| Efficiency | Forecast cached 8 minutes per rounded location; Gemini answers cached 15 minutes per forecast hour, place, profile and question; AI work bounded to 22 seconds so a request never outlives the browser; no framework, build step, web fonts or third-party scripts |
+| Efficiency | Forecast cached 8 minutes per rounded location; Gemini answers cached 15 minutes per forecast hour, place, profile and question; AI work bounded to 40 seconds so a request never outlives the browser's 45-second wait; no framework, build step, web fonts or third-party scripts |
 | Testing | 117 Python tests at about 95% branch coverage, 10 Node tests, desktop and mobile browser journeys, 8 axe scans and a keyboard walkthrough; planted-bug checks are recorded in [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Accessibility | Zero axe-core violations across 8 page states at 1366 px and 390 px; WCAG AA text contrast; keyboard city search with visible focus and announced results; skip link, labelled controls, data table for the chart, reduced-motion support (`scripts/a11y_check.py`) |
 | Problem alignment | Families, commuters, outdoor workers and neighbourhood groups get different routines, indoor actions and sustainable swaps, each with its direct mechanism; duration-weighted timing for the planned activity; opt-in Gemini briefing and follow-up questions |

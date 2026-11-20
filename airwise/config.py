@@ -17,9 +17,10 @@ MODEL_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]{3,70}$")
 GEMINI_TEMPERATURE = 0.25
 GEMINI_MAX_OUTPUT_TOKENS = 2500
 
-# Time budgets in seconds. The browser abandons any request after 25 s (static/js/transport.js),
+# Time budgets in seconds. The browser abandons any request after 45 s (static/js/transport.js),
 # so each AI-backed request must finish, or give up on AI, before then.
-REQUEST_BUDGET_S = 22.0
+# A live Gemini 2.5 Flash briefing took 21.7 s on 20 Nov 2026, too close to the earlier 22 s budget.
+REQUEST_BUDGET_S = 40.0
 MIN_AI_BUDGET_S = 3.0
 GEMINI_CONNECT_TIMEOUT_S = 5.0
 FORECAST_CONNECT_TIMEOUT_S = 3.0

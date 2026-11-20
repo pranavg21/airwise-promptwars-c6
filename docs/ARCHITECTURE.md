@@ -73,7 +73,7 @@ If Gemini is missing, times out, returns bad JSON or fails validation, API retur
 1. `security.reject_unsafe_request` rejects oversized, non-JSON or cross-site writes before routing.
 2. The route applies its rate limit, then fetches (or reuses) the forecast; a provider failure is a 503 with no invented values.
 3. `generate_policy` builds the deterministic plan. It never depends on Gemini.
-4. The route gives Gemini only the time left in a 22-second budget (`config.REQUEST_BUDGET_S`), so the request finishes before the browser's 25-second abort. With less than 3 seconds left, AI is skipped and reported unavailable.
+4. The route gives Gemini only the time left in a 40-second budget (`config.REQUEST_BUDGET_S`), so the request finishes before the browser's 45-second abort. With less than 3 seconds left, AI is skipped and reported unavailable.
 5. `ai.personalize` returns a cached validated answer for the same forecast hour, place, profile and question, or calls the primary model and, if that fails, the optional `GEMINI_FALLBACK_MODEL`.
 6. The reply must parse as JSON, pass the `AiResponse` schema and contain no digits or percentage claims. Any failure is logged as `gemini_unavailable model=… reason=… status=…` (for example `reason=http_status status=429` for an exhausted quota) without the key, prompt or reply, and the user sees a plain unavailable message.
 
