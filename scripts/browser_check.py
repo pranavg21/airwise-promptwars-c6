@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock
 
 from playwright.async_api import Browser, Page, expect
 
+from airwise.ai import AiUnavailableError
 from airwise.models import AiResponse
 from scripts.harness import ST_JOHNS, chromium, hold_responses, served_app, watch_for_errors
 
@@ -86,6 +87,31 @@ async def late_answer_is_discarded(page: Page, base: str) -> None:
     await page.unroute("**/api/ask")
 
 
+async def failed_answer_points_to_rule_based_plan(page: Page, base: str, gemini: AsyncMock) -> None:
+    """When Gemini cannot answer (for example, out of quota), offer guidance that does not use it."""
+    gemini.side_effect = AiUnavailableError("quota exhausted")
+    calls = gemini.await_count
+    try:
+        await page.goto(base)
+        await page.locator('[data-city="pune"]').click()
+        await expect(page.locator("#aqiValue")).to_have_text("180")
+        await page.locator("#aiConsent").check()
+        await page.locator("#question").fill("Should my child play outside today?")
+        fallback = page.locator("#askAnswer button")
+        await page.locator("#askBtn").click()
+        await expect(fallback).to_have_text("Build plan without Gemini")
+        await fallback.click()
+        await expect(page.locator("#recommendations")).to_contain_text("Build a cleaner-air room")
+        await page.locator("#askBtn").click()
+        await expect(fallback).to_have_text("Go to my rule-based plan")
+        await fallback.click()
+        await expect(page.locator("#recommendations")).to_be_focused()
+        # Two questions reached Gemini; the fallback plan did not, although consent was still on.
+        assert gemini.await_count == calls + 2, gemini.await_count
+    finally:
+        gemini.side_effect = None
+
+
 async def walkthrough(browser: Browser, base: str, width: int) -> None:
     page = await browser.new_page(viewport={"width": width, "height": 860}, reduced_motion="reduce")
     problems = watch_for_errors(page)
@@ -106,9 +132,13 @@ async def run() -> None:
         await outlook_stays_within_24_hours(page, base)
         await apostrophe_city_search(page, base, mocks.search)
         await late_answer_is_discarded(page, base)
+        await failed_answer_points_to_rule_based_plan(page, base, mocks.gemini)
         assert not problems, problems
         await page.close()
-        print("PASS outlook within 24 hours, apostrophe city search, late Gemini answer discarded")
+        print(
+            "PASS outlook within 24 hours, apostrophe city search, late Gemini answer discarded,"
+            " failed answer offers the rule-based plan"
+        )
 
 
 if __name__ == "__main__":

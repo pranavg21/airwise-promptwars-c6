@@ -13,7 +13,7 @@ import pytest
 
 from airwise import ai, config, main
 from airwise.ai import AiUnavailableError, personalize
-from airwise.models import Profile
+from airwise.models import Hour, Location, Profile, Snapshot
 from airwise.policy import generate_policy
 
 REAL_CLIENT = httpx.AsyncClient
@@ -61,6 +61,33 @@ async def test_identical_requests_reuse_the_validated_answer(gemini, snapshot):
     second = await personalize(*inputs, question="How can we reduce idling?")
     await personalize(*inputs, question="Which indoor smoke sources can we remove?")
     assert first == second
+    assert len(seen) == 2
+
+
+def pune_forecast(pm):
+    """One fixed place and model time; only the hourly PM2.5 values differ between calls."""
+    hours = [Hour(time=f"2026-11-19T{8 + i:02}:00", pm2_5=value, us_aqi=80) for i, value in enumerate(pm)]
+    return Snapshot(
+        location=Location(name="Pune", latitude=18.52, longitude=73.86),
+        retrieved_at="2026-11-19T08:00Z",
+        model_time=hours[0].time,
+        timezone="Asia/Kolkata",
+        hourly=hours,
+    )
+
+
+async def test_a_revised_forecast_that_changes_the_decision_is_not_served_from_cache(gemini):
+    seen, _ = gemini
+    profile = Profile(start_hour=8, outdoor_minutes=120)
+    shifts = []
+    for pm in ([60, 60, 1, 200], [60, 60, 1, 1]):
+        snapshot = pune_forecast(pm)
+        policy = generate_policy(snapshot, profile)
+        shifts.append(policy.shift.recommended_time)
+        await personalize(snapshot, profile, policy)
+        sent = json.loads(json.loads(seen[-1].content)["contents"][0]["parts"][0]["text"])
+        assert sent["activity_timing_recommendation"]["recommended_time"] == shifts[-1]
+    assert shifts == ["2026-11-19T09:00", "2026-11-19T10:00"]
     assert len(seen) == 2
 
 

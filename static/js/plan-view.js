@@ -176,3 +176,22 @@ export function renderAnswer(reply) {
   );
   $("askAnswer").replaceChildren(box);
 }
+
+/**
+ * When Gemini cannot answer, point to guidance that does not depend on it.
+ * @param {string} reason Why the answer failed, already shortened for display.
+ * @param {boolean} hasPlan Whether a rule-based plan for the current settings is on screen.
+ * @param {() => void} buildPlan Builds the rule-based plan without Gemini.
+ */
+export function renderAnswerFallback(reason, hasPlan, buildPlan) {
+  const box = node("div", "", "ask-answer");
+  box.append(node("strong", `Answer unavailable: ${reason}`));
+  const action = node("button", hasPlan ? "Go to my rule-based plan" : "Build plan without Gemini");
+  action.type = "button";
+  action.addEventListener("click", hasPlan ? () => $("recommendations").focus() : buildPlan);
+  const next = hasPlan
+    ? "Your rule-based plan does not depend on Gemini: its action cards and timing comparison still apply."
+    : "You can still build a rule-based plan from the same air data. It does not use Gemini.";
+  box.append(node("p", next), action);
+  $("askAnswer").replaceChildren(box);
+}

@@ -2,7 +2,7 @@
 import { communityBrief } from "./brief.js";
 import { $, node } from "./dom.js";
 import { conciseError, showNotice } from "./notice.js";
-import { renderAi, renderAnswer, renderRecommendations } from "./plan-view.js";
+import { renderAi, renderAnswer, renderAnswerFallback, renderRecommendations } from "./plan-view.js";
 import { displaySnapshot } from "./readings.js";
 import { state } from "./state.js";
 import { getJson } from "./transport.js";
@@ -23,7 +23,8 @@ const PLAN_PANELS = [
 const initialPanels = new Map(PLAN_PANELS.map((id) => [id, $(id).cloneNode(true)]));
 
 export function aiStatusLabel() {
-  return state.aiReady ? "AVAILABLE · OPT IN" : "NOT CONFIGURED";
+  // A key is set; whether Gemini has quota left is only known when a request is made.
+  return state.aiReady ? "CONFIGURED · OPT IN" : "NOT CONFIGURED";
 }
 
 /** Clear the plan and invalidate any plan or answer still in flight. */
@@ -60,7 +61,7 @@ function readProfile() {
   };
 }
 
-/** @param {Record<string, unknown>} [extra] */
+/** @param {Record<string, unknown>} [extra] Fields that add to or override the defaults. */
 function requestBody(extra = {}) {
   return { location: state.location, profile: readProfile(), ai_consent: checked("aiConsent"), ...extra };
 }
@@ -93,8 +94,11 @@ function showPlan(data) {
   $("recommendations").scrollIntoView({ behavior: reducedMotion ? "instant" : "smooth", block: "start" });
 }
 
-/** Request a plan for the current city and settings; late responses for old settings are dropped. */
-export async function generatePlan() {
+/**
+ * Request a plan for the current city and settings; late responses for old settings are dropped.
+ * @param {boolean} [withAi] Ask for a Gemini briefing; defaults to the consent checkbox.
+ */
+export async function generatePlan(withAi = checked("aiConsent")) {
   const button = $("generateBtn", HTMLButtonElement);
   if (!$("settingsForm", HTMLFormElement).reportValidity() || button.disabled) return;
   if (state.pendingCity) {
@@ -108,8 +112,9 @@ export async function generatePlan() {
   setBusy(button, true, "Building your plan...");
   showNotice("");
   try {
+    const body = JSON.stringify(requestBody({ ai_consent: withAi }));
     /** @type {PlanResponse} */
-    const data = await getJson("/api/plan", { method: "POST", body: JSON.stringify(requestBody()) });
+    const data = await getJson("/api/plan", { method: "POST", body });
     if (version === state.planVersion) showPlan(data);
   } catch (error) {
     if (version === state.planVersion) {
@@ -153,7 +158,7 @@ export async function askQuestion(event) {
     if (version === state.planVersion) renderAnswer(data.ai);
   } catch (error) {
     if (version === state.planVersion) {
-      $("askAnswer").replaceChildren(node("p", `Answer unavailable: ${conciseError(error)}`, "ask-answer"));
+      renderAnswerFallback(conciseError(error), Boolean(state.policy), () => void generatePlan(false));
     }
   } finally {
     button.disabled = false;

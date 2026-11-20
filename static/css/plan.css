@@ -25,7 +25,8 @@
   font-size: 13px;
   color: var(--muted);
 }
-.empty-card button {
+.empty-card button,
+.ask-answer button {
   margin-top: 8px;
   border: 1px solid #95bd74;
   color: #365d22;
