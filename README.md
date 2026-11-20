@@ -9,7 +9,7 @@
 AirWise is not another generic chatbot or a map that paints arbitrary numbers. It combines real external **modeled air-quality estimates** with deterministic, inspectable decisions and an **opt-in server-side Gemini narrative**. It never silently turns a model forecast into a government-monitored reading.
 
 **Deployment:** https://airwise-promptwars-c6-897669266422.asia-south1.run.app  
-**Demo video:** Add your actual unlisted YouTube or publicly accessible Google Drive URL after recording.
+**Demo video:** [Watch the AirWise demo on YouTube](https://youtu.be/TvnFK4hocVI)
 
 ## 1. Key functionality and problem alignment
 
