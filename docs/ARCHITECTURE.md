@@ -64,7 +64,7 @@ Actions for vulnerable residents are more precautionary but avoid replacing pers
 
 ## AI boundary and observability
 
-`/api/plan` returns rule guidance without Gemini when `ai_consent=false`. With opt-in, Gemini gets the city name, current modeled values, profile flags and already-authorized advice. The API key stays on server-side `os.environ`; model identifier is allowlisted. The prompt includes no exact street address, account identifiers or browsing data.
+`/api/plan` returns rule guidance without Gemini when `ai_consent=false`. With opt-in, Gemini gets the city name, current modeled values, profile flags, already-authorized advice and the planner's timing recommendation for the user's own activity (`activity_timing_recommendation`), so its explanation matches the decision on screen; the single lowest-AQI hour is sent separately and labelled as context. The API key stays on server-side `os.environ`; model identifier is allowlisted. The prompt includes no exact street address, account identifiers or browsing data.
 
 If Gemini is missing, times out, returns bad JSON or fails validation, API returns `ai=null` with `ai_status=unavailable`; it **does not impersonate successful generation**. Users can still act on the rules. `/api/ask` refuses requests without opt-in or when a key is unavailable.
 

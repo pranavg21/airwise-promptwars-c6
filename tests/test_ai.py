@@ -135,3 +135,33 @@ async def test_ai_claiming_unverified_percentage_is_rejected(snapshot, monkeypat
         client.return_value.__aenter__.return_value.post = AsyncMock(return_value=fake)
         with pytest.raises(AiUnavailableError):
             await personalize(snapshot, p, generate_policy(snapshot, p))
+
+
+def test_gemini_receives_the_duration_aware_timing_decision():
+    """For a two-hour outing the planner picks 09:00; Gemini must see that, not only the 10:00 low."""
+    from airwise.models import Hour, Location, Snapshot
+
+    pm, aqi = [60, 60, 1, 200], [80, 80, 70, 80]
+    hours = [
+        Hour(time=f"2026-11-19T{8 + i:02}:00", pm2_5=p, us_aqi=a)
+        for i, (p, a) in enumerate(zip(pm, aqi, strict=True))
+    ]
+    snapshot = Snapshot(
+        location=Location(name="Pune", latitude=18.52, longitude=73.86),
+        retrieved_at="2026-11-19T02:30Z",
+        model_time=hours[0].time,
+        timezone="Asia/Kolkata",
+        us_aqi=80,
+        hourly=hours,
+    )
+    profile = Profile(start_hour=8, outdoor_minutes=120)
+    context = build_context(snapshot, profile, generate_policy(snapshot, profile), "Why move my outing?")
+    assert context["activity_timing_recommendation"]["recommended_time"] == "2026-11-19T09:00"
+    assert context["activity_timing_recommendation"]["duration_min"] == 120
+    assert context["lowest_aqi_hour_next_24h"]["time"] == "2026-11-19T10:00"
+
+
+def test_context_has_no_timing_decision_when_the_planner_made_none(snapshot):
+    profile = Profile(outdoor_minutes=0)
+    context = build_context(snapshot, profile, generate_policy(snapshot, profile), None)
+    assert context["activity_timing_recommendation"] is None

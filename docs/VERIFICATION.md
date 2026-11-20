@@ -6,7 +6,7 @@ This record separates three kinds of evidence: automated tests (controlled fakes
 
 The [AirWise Quality Gate](https://github.com/pranavg21/airwise-promptwars-c6/actions) runs on every push to `main` (Ubuntu, Python 3.12, Node 22, pinned dependencies) in three jobs:
 
-- **Python:** `ruff check .` (pyflakes, bugbear, naming, imports and a McCabe complexity limit of 10), `ruff format --check .`, `mypy --strict` on `airwise/`, pytest with 100% statement and branch coverage required, `scripts/mutation_check.py` (13 planted bugs, each must make a suite fail), `pip-audit -r requirements.txt`, `scripts/audit_repo.py` (size under 10 MB, secret scan) and a single-branch check.
+- **Python:** `ruff check .` (pyflakes, bugbear, naming, imports and a McCabe complexity limit of 10), `ruff format --check .`, `mypy --strict` on `airwise/`, pytest with 100% statement and branch coverage required, `scripts/mutation_check.py` (14 planted bugs, each must make a suite fail), `pip-audit -r requirements.txt`, `scripts/audit_repo.py` (size under 10 MB, secret scan) and a single-branch check.
 - **Frontend:** ESLint (complexity 10, 40 lines per function, 200 lines per file), Prettier `--check`, strict TypeScript checking of `static/js` (`checkJs`, `strict`, no unused locals or parameters), Node unit tests and `npm audit`.
 - **CodeQL** (separate workflow): security-and-quality queries for Python and JavaScript on every push and weekly.
 - **Browser:** `scripts/browser_check.py` (Chromium at 1366 px and 390 px) and `scripts/a11y_check.py` (axe-core 4.12.1 via `axe-playwright-python==0.1.8`, plus a keyboard walkthrough).
@@ -30,6 +30,7 @@ What the automated suite covers:
 - Consent enforcement, AI fallback on `/api/plan`, preferences reaching Gemini only with consent (`tests/test_workflow.py`)
 - `/api/ask` success, forecast outage, missing key, truncated model output, and an upstream HTTP 429 quota rejection on both `/api/ask` and `/api/plan`, using the real Gemini adapter against an in-process mock transport (`tests/test_ask.py`)
 - Structured-output validation and the numeric-claim text guard, including Hindi (`tests/test_ai.py`, `tests/test_windows.py`)
+- Gemini's context carries the planner's duration-aware timing decision (a two-hour outing gets 09:00 even though the single lowest hour is 10:00) (`tests/test_ai.py`)
 - Gemini answer reuse within 15 minutes, failures never cached, a 40-second deadline, the optional fallback model, and failure logs that name the reason and status without the key, question or reply (`tests/test_ai_resilience.py`)
 - Security headers on pages, API and static files; cross-site API writes rejected; malformed `Content-Length`; `Retry-After` on rate limits (`tests/test_security.py`)
 - Browser modules without DOM side effects: number and time formatting, forecast window and lowest hour, place labels, and a community brief that never carries household health choices (`tests/js/pure-modules.test.js`)

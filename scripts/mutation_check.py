@@ -55,6 +55,12 @@ MUTANTS = (
         "",
         "identical AI requests reuse the cached answer",
     ),
+    Mutant(
+        "airwise/ai.py",
+        '"activity_timing_recommendation": policy.shift.model_dump() if policy.shift else None,',
+        '"activity_timing_recommendation": None,',
+        "Gemini receives the planner's timing decision",
+    ),
     Mutant("airwise/data.py", "result < 0", "result < -1", "negative upstream values are discarded"),
     Mutant("airwise/security.py", '== "cross-site"', '== "never"', "cross-site API writes are rejected"),
     Mutant(
