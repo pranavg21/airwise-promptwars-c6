@@ -10,6 +10,7 @@ The [AirWise Quality Gate](https://github.com/pranavg21/airwise-promptwars-c6/ac
 2. `python -m pytest -q --cov=airwise --cov-branch --cov-fail-under=80`
 3. `python scripts/audit_repo.py` (size under 10 MB, basic secret scan)
 4. `python -m scripts.browser_check` (Chromium at 1366 px and 390 px)
+5. `python -m scripts.a11y_check` (axe-core 4.12.1 via `axe-playwright-python==0.1.8`, plus a keyboard walkthrough, at 1366 px and 390 px)
 
 Recorded results:
 
@@ -26,13 +27,14 @@ What the automated suite covers:
 - `/api/ask` success, forecast outage, missing key, truncated model output, and an upstream HTTP 429 quota rejection on both `/api/ask` and `/api/plan`, using the real Gemini adapter against an in-process mock transport (`tests/test_ask.py`)
 - Structured-output validation and the numeric-claim text guard, including Hindi (`tests/test_ai.py`, `tests/test_windows.py`)
 - Browser: city selection, profile change clearing the plan, a delayed plan response arriving after a city change, a provider outage, and horizontal overflow at 390 px (`scripts/browser_check.py`, synthetic air data, no Gemini)
+- Accessibility: zero axe violations for a built plan, the same plan with every disclosure open, open city suggestions, and a rendered AI briefing and answer from a mocked Gemini; a keyboard user can reach city search with a visible focus indicator, open and move through suggestions, dismiss them with Escape, select Pune, and continue to build a plan (`scripts/a11y_check.py`)
 
 What it does not cover:
 
 - Real Gemini output quality or relevance, latency, or current quota
 - Rendering of AI answers in the browser and the `/api/ask` stale-response guard
 - The 25-second browser timeout against a slow server
-- Keyboard-only use, screen readers, colour contrast and touch-target size
+- Screen-reader output, keyboard use beyond the city search flow, and touch-target size; axe checks rendered states only, not every interaction
 
 ## Live checks on the deployed service
 
@@ -59,7 +61,8 @@ Re-run a hosted check with `python scripts/smoke_host.py https://YOUR-HOST` (no 
 | Blocker | Demo video under four minutes plays signed out | Requires recording |
 | Blocker | LinkedIn post URL opens signed out | Requires publishing |
 | High | Gemini quota and tier for the key-owning project are known | Check in Google AI Studio |
-| High | Keyboard-only walkthrough | Manual |
+| High | Keyboard walkthrough of city search and plan building | Automated in CI (`scripts/a11y_check.py`) |
+| Medium | Screen-reader pass (NVDA or VoiceOver) | Manual |
 | Medium | Print view is readable and source-labeled | Manual |
 
 ## Adversarial cases for a reviewer

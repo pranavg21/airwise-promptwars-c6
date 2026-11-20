@@ -1,7 +1,7 @@
 /** Accessible vector chart with no dependencies or HTML injection. */
 const NS = 'http://www.w3.org/2000/svg';
 function svgNode(tag, attrs={}) {const n = document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,String(v)));return n;}
-function textSvg(x,y,text,anchor='start'){const n=svgNode('text',{x,y,fill:'#8a9989','font-size':11,'text-anchor':anchor,'font-family':'Arial, sans-serif'});n.textContent=text;return n;}
+function textSvg(x,y,text,anchor='start'){const n=svgNode('text',{x,y,class:'chart-label','font-size':11,'text-anchor':anchor,'font-family':'Arial, sans-serif'});n.textContent=text;return n;}
 export function currentHours(snapshot) {
   if (!snapshot || !Array.isArray(snapshot.hourly)) return [];
   const from = snapshot.model_time;

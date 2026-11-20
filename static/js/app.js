@@ -12,6 +12,12 @@ const EXAMPLES = Object.freeze({
 });
 
 const state = {location: EXAMPLES.delhi, snapshot: null, policy: null, pendingCity: false, aiReady: false};
+// Suggestions appear after an explicit search; the search button owns the expanded state.
+function setResultsOpen(open) {
+  $('cityResults').hidden = !open;
+  $('citySearchBtn').setAttribute('aria-expanded', String(open));
+}
+function announceCity(message) {$('cityStatus').textContent = message;}
 function conciseError(err) {return err instanceof Error ? err.message : 'Something went wrong. Please retry.';}
 function showNotice(message, error=false) {
   const alert = $('notice'); alert.textContent = message; alert.hidden = !message;
@@ -52,7 +58,7 @@ function setLocation(location) {
   state.location = location;
   state.pendingCity = false; $('citySearch').value = location.name;
   $('chosenCity').textContent = `${location.name}, ${location.region ? location.region + ', ' : ''}${location.country}`;
-  $('cityResults').hidden = true; $('citySearch').setAttribute('aria-expanded', 'false');
+  setResultsOpen(false);
   $('aqiCity').textContent = location.name.toUpperCase();
   showNotice('');
   void loadSnapshot();
@@ -143,19 +149,23 @@ async function generatePlan() {
 
 async function searchCity() {
   const q=$('citySearch').value.trim();const dropdown=$('cityResults');
-  if(q.length<3){dropdown.hidden=true;showNotice('Type at least 3 characters to search a city.',true);return;}
-  const sequence=++searchSequence;dropdown.hidden=false;dropdown.replaceChildren(node('p','Searching cities...','field-help'));
+  if(q.length<3){setResultsOpen(false);showNotice('Type at least 3 characters to search a city.',true);return;}
+  const sequence=++searchSequence;setResultsOpen(true);dropdown.replaceChildren(node('p','Searching cities...','field-help'));announceCity('Searching cities...');
   try {
     const payload=await getJson(`/api/geo?q=${encodeURIComponent(q)}`);
     if(sequence!==searchSequence)return;
     dropdown.replaceChildren();
-    if(!payload.results.length){dropdown.append(node('p','No matching city found. Try a longer name.','field-help'));return;}
+    if(!payload.results.length){dropdown.append(node('p','No matching city found. Try a longer name.','field-help'));announceCity('No matching city found.');return;}
     payload.results.forEach(city=>{
-      const button=node('button',city.name);button.type='button';button.setAttribute('role','option');button.setAttribute('aria-selected','false');
+      const button=node('button',city.name);button.type='button';
       button.append(node('small',`${city.region ? city.region+', ':''}${city.country}`));
-      button.addEventListener('click',()=>setLocation(city));dropdown.append(button);
-    }); $('citySearch').setAttribute('aria-expanded','true');
-  } catch(err){if(sequence===searchSequence)dropdown.replaceChildren(node('p',conciseError(err),'field-help'));}
+      button.addEventListener('click',()=>{
+        setLocation(city);$('citySearch').focus();
+        announceCity(`Selected ${$('chosenCity').textContent}.`);
+      });dropdown.append(button);
+    });
+    announceCity(`${payload.results.length} matching ${payload.results.length===1?'city':'cities'}. Press Down Arrow to choose.`);
+  } catch(err){if(sequence===searchSequence){dropdown.replaceChildren(node('p',conciseError(err),'field-help'));announceCity(conciseError(err));}}
 }
 function createCommunityBrief() {
   if(!state.snapshot || !state.policy)return null;
@@ -198,20 +208,20 @@ function bindEvents() {
   $('settingsForm').addEventListener('change',e=>{if(e.target.id !== 'citySearch'){resetPlan();showNotice('Preferences changed. Build a plan for the new settings.');}});
   $('recommendations').addEventListener('click',e=>{if(e.target.closest('#emptyGenerate')) void generatePlan();});
   $('citySearchBtn').addEventListener('click',()=>void searchCity());
-  $('citySearch').addEventListener('input',()=>{state.pendingCity=true;searchSequence++;resetReadings();$('aqiCity').textContent='SELECT CITY';$('chosenCity').textContent='Select a search result or city shortcut';$('cityResults').hidden=true;$('citySearch').setAttribute('aria-expanded','false');});
+  $('citySearch').addEventListener('input',()=>{state.pendingCity=true;searchSequence++;resetReadings();$('aqiCity').textContent='SELECT CITY';$('chosenCity').textContent='Select a search result or city shortcut';setResultsOpen(false);});
   $('citySearch').addEventListener('keydown',e=>{
     if(e.key==='Enter'){e.preventDefault();void searchCity();}
     if(e.key==='ArrowDown' && !$('cityResults').hidden){e.preventDefault();$('cityResults').querySelector('button')?.focus();}
-    if(e.key==='Escape'){$('cityResults').hidden=true;$('citySearch').setAttribute('aria-expanded','false');}
+    if(e.key==='Escape'){setResultsOpen(false);}
   });
   $('cityResults').addEventListener('keydown',e=>{
     const buttons=[...$('cityResults').querySelectorAll('button')];const pos=buttons.indexOf(document.activeElement);
     if(e.key==='ArrowDown'){e.preventDefault();buttons[Math.min(pos+1,buttons.length-1)]?.focus();}
     if(e.key==='ArrowUp'){e.preventDefault();if(pos===0)$('citySearch').focus();else buttons[Math.max(0,pos-1)]?.focus();}
-    if(e.key==='Escape'){$('cityResults').hidden=true;$('citySearch').focus();}
+    if(e.key==='Escape'){setResultsOpen(false);$('citySearch').focus();}
   });
   document.querySelectorAll('[data-city]').forEach(b=>b.addEventListener('click',()=>setLocation(EXAMPLES[b.dataset.city])));
-  document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap')&&!e.target.closest('.city-results')){$('cityResults').hidden=true;$('citySearch').setAttribute('aria-expanded','false');}});
+  document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap')&&!e.target.closest('.city-results'))setResultsOpen(false);});
   $('aboutBtn').addEventListener('click',()=>{$('methodology').scrollIntoView({behavior:'smooth'});});
   $('refreshBtn').addEventListener('click',()=>void loadSnapshot());
   $('copyBtn').addEventListener('click',()=>void copyBrief());
