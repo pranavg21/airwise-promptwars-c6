@@ -18,7 +18,7 @@ Recorded results:
 | `a417f49`, adds `tests/test_ask.py` ([run 44689312307](https://github.com/pranavg21/airwise-promptwars-c6/actions/runs/44689312307)) | 61 passed, 4 subtests passed, 90.45% branch-inclusive coverage; both browser widths passed |
 | `6462dff`, accessibility fixes ([run 44722062812](https://github.com/pranavg21/airwise-promptwars-c6/actions/runs/44722062812)) | 61 passed, 4 subtests passed, 90.45% coverage; both browser widths passed; `scripts/a11y_check.py` reported zero axe violations in all eight scans (four page states at 1366 px and 390 px) and a passing keyboard walkthrough |
 
-| `7d63f6b` and the quality release that follows it | 117 Python tests and 4 subtests at about 95% branch coverage, 10 Node tests, lint, format, strict types and both audits clean, both browser widths and all eight axe scans passing in local runs; see the CI run for the pushed commit |
+| `e07e711`, quality release ([run 44748834718](https://github.com/pranavg21/airwise-promptwars-c6/actions/runs/44748834718)) | Python job: ruff, ruff format, mypy --strict, 117 tests and 4 subtests at 94.80% branch coverage, pip-audit, repository audit and single-branch check passed. Frontend job: ESLint, Prettier, 10 Node tests and npm audit passed. Browser job: both widths, all eight axe scans and the keyboard walkthrough passed |
 
 What the automated suite covers:
 
