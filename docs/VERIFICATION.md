@@ -134,7 +134,8 @@ From the owner's deployment report; not independently re-run from this repositor
 | Revision | `airwise-promptwars-c6-00014-xem`, built from a clean checkout of `9ee7c9e`, tested at a tagged URL with no traffic, then promoted to 100%; `00012-foq` kept for rollback; configuration identical to before |
 | Checks with Gemini off | The same HTTP, outlook and browser checks as the previous rollout, on the tagged URL and again on the public URL after promotion |
 | Gemini (2 live calls, tagged URL) | Pune, family, children, 08:00, 120 minutes. The comparison card showed no complete 120-minute alternative meeting the criteria (lowest single hour 00:00, AQI 123). The briefing was generated and named no time. The answer to "Why should I move my two-hour outing?" was generated and said there was no specific timing recommendation. Neither contradicted the card. No `gemini_unavailable` log lines |
-| Not covered live | That evening's forecast produced no recommended alternative, so the case where Gemini receives a recommended start time was not exercised live. It is covered by mocked tests (`tests/test_ai.py`) and a mutant in `scripts/mutation_check.py` |
+| Gemini with a recommended time (2 more live calls, public URL) | Pune, family, children, 06:00, 120 minutes. The card recommended 04:00 (62.1 → 57.8 µg/m³, 7.0% lower). The briefing said "starting around four in the morning"; the answer said "around the pre-dawn hours" and offered reduced intensity or indoor alternatives if an earlier start is impractical. Neither named a different time. No `gemini_unavailable` log lines |
+| Known limitation | The comparison considers every forecast hour, including pre-dawn hours, and does not know the household's waking hours |
 
 These are single observations, not guarantees of availability or response time. Readings vary with each forecast and must not be presented as current.
 
