@@ -6,7 +6,7 @@
 
 **Project Deployed Link:** `https://airwise-promptwars-c6-897669266422.asia-south1.run.app`
 
-**Project Demo Video Submission:** `https://YOUR-REAL-UNLISTED-YOUTUBE-OR-PUBLIC-DRIVE-VIDEO` (replace with your published video URL)
+**Project Demo Video Submission:** https://youtu.be/TvnFK4hocVI
 
 ---
 
@@ -44,6 +44,6 @@ What makes AirWise distinct:
 
 Live application: https://airwise-promptwars-c6-897669266422.asia-south1.run.app
 Public repository: https://github.com/pranavg21/airwise-promptwars-c6
-Demo video: [VIDEO_LINK]
+Demo video: https://youtu.be/TvnFK4hocVI
 
 #PromptWars #Hack2Skill #GoogleCloud #GeminiAPI #CloudRun #AirQuality #FastAPI #ResponsibleAI #Python
