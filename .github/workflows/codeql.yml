@@ -31,3 +31,16 @@ jobs:
       - uses: github/codeql-action/analyze@d2aacf54c2fbc910db8d7ec338fdb54ea48c692d # v3
         with:
           category: /language:${{ matrix.language }}
+          output: codeql-results
+      - name: List findings in the log
+        run: |
+          python3 - <<'PY'
+          import glob, json
+          results = [r for path in glob.glob("codeql-results/*.sarif")
+                     for run in json.load(open(path))["runs"] for r in run.get("results", [])]
+          for r in results:
+              where = r["locations"][0]["physicalLocation"]
+              print(f'{r.get("level", "warning")} {r["ruleId"]} {where["artifactLocation"]["uri"]}:'
+                    f'{where.get("region", {}).get("startLine")} {r["message"]["text"][:160]}')
+          print(f"{len(results)} CodeQL findings")
+          PY
