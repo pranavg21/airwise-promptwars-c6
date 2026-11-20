@@ -103,7 +103,7 @@ From the owner's deployment report; not independently re-run from this repositor
 
 ### Outlook and city-search rollout, 20 November 2026 (IST)
 
-From the owner's deployment report; not independently re-run from this repository. This is the revision serving production at the time of writing.
+From the owner's deployment report; not independently re-run from this repository.
 
 | Item | Reported result |
 |---|---|
@@ -115,7 +115,7 @@ From the owner's deployment report; not independently re-run from this repositor
 
 ### Final release rollout, 20 November 2026 (IST)
 
-From the owner's deployment report; not independently re-run from this repository. This revision serves production at the time of writing.
+From the owner's deployment report; not independently re-run from this repository.
 
 | Item | Reported result |
 |---|---|
@@ -125,9 +125,20 @@ From the owner's deployment report; not independently re-run from this repositor
 | Browser | No console errors or failed requests on load; "St. John's" search works; keyboard search, Escape and selection work; family plan builds; no overflow at 390 px. Repeated on the public URL |
 | Gemini | No calls |
 
+### Grounded timing rollout, 20 November 2026 (IST)
+
+From the owner's deployment report; not independently re-run from this repository. This revision serves production at the time of writing.
+
+| Item | Reported result |
+|---|---|
+| Revision | `airwise-promptwars-c6-00014-xem`, built from a clean checkout of `9ee7c9e`, tested at a tagged URL with no traffic, then promoted to 100%; `00012-foq` kept for rollback; configuration identical to before |
+| Checks with Gemini off | The same HTTP, outlook and browser checks as the previous rollout, on the tagged URL and again on the public URL after promotion |
+| Gemini (2 live calls, tagged URL) | Pune, family, children, 08:00, 120 minutes. The comparison card showed no complete 120-minute alternative meeting the criteria (lowest single hour 00:00, AQI 123). The briefing was generated and named no time. The answer to "Why should I move my two-hour outing?" was generated and said there was no specific timing recommendation. Neither contradicted the card. No `gemini_unavailable` log lines |
+| Not covered live | That evening's forecast produced no recommended alternative, so the case where Gemini receives a recommended start time was not exercised live. It is covered by mocked tests (`tests/test_ai.py`) and a mutant in `scripts/mutation_check.py` |
+
 These are single observations, not guarantees of availability or response time. Readings vary with each forecast and must not be presented as current.
 
-Re-run a hosted check with `python scripts/smoke_host.py https://YOUR-HOST` (no Gemini calls). Adding `--ai` sends three real Gemini requests from the daily allowance, and its 60-second client timeout is longer than the browser's 25 seconds.
+Re-run a hosted check with `python scripts/smoke_host.py https://YOUR-HOST` (no Gemini calls). Adding `--ai` sends three real Gemini requests from the daily allowance, and its 60-second client timeout is longer than the browser's 45 seconds.
 
 ## Before submission
 
