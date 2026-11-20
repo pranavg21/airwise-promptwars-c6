@@ -17,7 +17,8 @@ Recorded results:
 | Commit | Result |
 |---|---|
 | `a2038ff` ([run 44546257185](https://github.com/pranavg21/airwise-promptwars-c6/actions/runs/44546257185)) | 54 passed, 4 subtests passed, 88.19% branch-inclusive coverage; both browser widths passed |
-| Commit adding `tests/test_ask.py` | 61 passed, 4 subtests passed, 90% coverage in a local run on Python 3.13; confirm the CI run for that commit |
+| `a417f49`, adds `tests/test_ask.py` ([run 44689312307](https://github.com/pranavg21/airwise-promptwars-c6/actions/runs/44689312307)) | 61 passed, 4 subtests passed, 90.45% branch-inclusive coverage; both browser widths passed |
+| `6462dff`, accessibility fixes ([run 44722062812](https://github.com/pranavg21/airwise-promptwars-c6/actions/runs/44722062812)) | 61 passed, 4 subtests passed, 90.45% coverage; both browser widths passed; `scripts/a11y_check.py` reported zero axe violations in all eight scans (four page states at 1366 px and 390 px) and a passing keyboard walkthrough |
 
 What the automated suite covers:
 
@@ -27,12 +28,13 @@ What the automated suite covers:
 - `/api/ask` success, forecast outage, missing key, truncated model output, and an upstream HTTP 429 quota rejection on both `/api/ask` and `/api/plan`, using the real Gemini adapter against an in-process mock transport (`tests/test_ask.py`)
 - Structured-output validation and the numeric-claim text guard, including Hindi (`tests/test_ai.py`, `tests/test_windows.py`)
 - Browser: city selection, profile change clearing the plan, a delayed plan response arriving after a city change, a provider outage, and horizontal overflow at 390 px (`scripts/browser_check.py`, synthetic air data, no Gemini)
-- Accessibility: zero axe violations for a built plan, the same plan with every disclosure open, open city suggestions, and a rendered AI briefing and answer from a mocked Gemini; a keyboard user can reach city search with a visible focus indicator, open and move through suggestions, dismiss them with Escape, select Pune, and continue to build a plan (`scripts/a11y_check.py`)
+- Accessibility, in the mocked CI walkthrough: zero axe violations for a built plan, the same plan with every disclosure open, open city suggestions, and an AI briefing and answer rendered from mocked Gemini responses, each at 1366 px and 390 px; a keyboard user can reach city search with a visible focus indicator, open and move through suggestions, dismiss them with Escape, select Pune, and continue to build a plan (`scripts/a11y_check.py`)
 
 What it does not cover:
 
 - Real Gemini output quality or relevance, latency, or current quota
-- Rendering of AI answers in the browser and the `/api/ask` stale-response guard
+- Rendering of live Gemini output in the browser. The CI walkthrough renders only a mocked briefing and answer
+- The `/api/ask` stale-response guard (a late answer arriving after the user changes city or settings)
 - The 25-second browser timeout against a slow server
 - Screen-reader output, keyboard use beyond the city search flow, and touch-target size; axe checks rendered states only, not every interaction
 
@@ -48,6 +50,18 @@ Owner-reported observations from signed-out browser sessions on 19 November 2026
 | 90-minute comparison for 20 November from one `/api/plan` response (AI off) | Recomputed by hand from that response's hourly values: 35.7333 → 25.8667 µg/m³, 27.6119%, displayed as 27.6% |
 | Recording rehearsal around 21:57 IST | Rule-based plan worked; Gemini briefing and answer unavailable. A controlled reproduction returned HTTP 429 `RESOURCE_EXHAUSTED` for the free-tier daily request limit of the project and model |
 
+### Accessibility rollout, 20 November 2026 (IST)
+
+From the owner's deployment report; not independently re-run from this repository.
+
+| Item | Reported result |
+|---|---|
+| Revision | `airwise-promptwars-c6-00004-nop`, built from a clean checkout of `6462dff`, first tested at a tagged URL with no traffic |
+| Promotion | Received 100% of production traffic; the previous revision `airwise-promptwars-c6-00003-8rb` stays available for rollback |
+| Desktop (1366 px), tagged and public URLs | Pune found by keyboard search; Escape dismissed suggestions and returned focus to the search field; selecting Pune kept focus on the search field; family plan generated; hourly forecast table scrolled by keyboard |
+| Mobile (390 px) | No horizontal overflow |
+| Gemini | Off throughout; no Gemini calls |
+
 These are single observations, not guarantees of availability or response time. Readings vary with each forecast and must not be presented as current.
 
 Re-run a hosted check with `python scripts/smoke_host.py https://YOUR-HOST` (no Gemini calls). Adding `--ai` sends three real Gemini requests from the daily allowance, and its 60-second client timeout is longer than the browser's 25 seconds.
@@ -58,7 +72,7 @@ Re-run a hosted check with `python scripts/smoke_host.py https://YOUR-HOST` (no 
 |---|---|---|
 | Blocker | Repository is public, has exactly one branch, latest commit has a green CI run | Check signed out before submitting |
 | Blocker | Deployed app loads signed out; `/api/health` shows `status: ok`, `ai_configured: true` | Check signed out before submitting |
-| Blocker | Demo video under four minutes plays signed out | Requires recording |
+| Blocker | Demo video under four minutes plays signed out | [Published demo, 2:48](https://youtu.be/TvnFK4hocVI). Signed-out playback still needs confirmation. |
 | Blocker | LinkedIn post URL opens signed out | Requires publishing |
 | High | Gemini quota and tier for the key-owning project are known | Check in Google AI Studio |
 | High | Keyboard walkthrough of city search and plan building | Automated in CI (`scripts/a11y_check.py`) |
