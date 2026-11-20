@@ -86,6 +86,7 @@ Single Python process, static assets served from `/static`, API served under `/a
 - SSRF prevention via fixed URL allowlist
 - Geocoding validation and TTL cache
 - Gemini opt-in and structured-output validation
+- `/api/ask` success, forecast outage, missing key, truncated output, and an upstream quota (HTTP 429) rejection on both AI routes
 - Model identifier validation, missing key, malformed/overlong AI output
 - API request-body, unknown-field, coordinate and media-type rejection
 - CSP and security response headers, rate limiting, publicly accessible UI

@@ -1,24 +1,42 @@
-# AirWise Demo Script (Target: 3:35 — 3:45)
+# AirWise Demo Script (target 3:35–3:45, hard limit under 4:00)
 
-**Recording Rules:**
-- Record in a fresh browser window at the live public Cloud Run deployment: `https://airwise-promptwars-c6-897669266422.asia-south1.run.app`
-- Do NOT record on localhost.
-- Keep total duration between 3:30 and 3:45 (strictly under 4 minutes).
-- Keep private credentials, API keys, and unrelated browser tabs off-screen.
+## Before recording
 
----
+- Record after the Gemini daily quota resets (midnight Pacific time; 1:30 PM IST in November). First check today's usage in Google AI Studio for the project that owns the deployed key. Other traffic on that project uses the same allowance.
+- Use a fresh signed-out or private browser window on the public deployment: `https://airwise-promptwars-c6-897669266422.asia-south1.run.app`. Do not record on localhost.
+- Open `/api/health` and confirm `status: ok` and `ai_configured: true`. This does not call Gemini. Do not make test AI calls before the take.
+- Keep credentials, consoles and unrelated tabs off screen.
+- Every value on screen is live. Do not read numbers from this script or from earlier rehearsals. Quote what the app shows during the take.
 
-### Shot-by-Shot Walkthrough (Pune Household Story)
+## Gemini budget for one take
 
-| Timestamp | Exact Actions on Screen | Narration / Audio Script |
+Exactly three Gemini calls: one briefing and two questions. Everything before that runs with Gemini **off**.
+
+Two UI behaviors decide the call count:
+
+- Changing any sidebar setting, including the Gemini switch, clears the current plan. A new plan must be built.
+- Typing in the city search clears the plan as well. Copy the community brief **before** the invalid-city test.
+
+If a Gemini panel shows unavailable, do not retry immediately. Check the provider status and the project's quota in AI Studio first. Response time alone does not identify the cause.
+
+## Shot list
+
+| Time | On screen | Narration (adapt to the live values) |
 |---|---|---|
-| **0:00 – 0:25** | Open `https://airwise-promptwars-c6-897669266422.asia-south1.run.app`. Highlight the dashboard header, model timestamp, and explicit **US EPA AQI** notice distinguishing it from India's CPCB scale. | "AirWise is a source-grounded air quality decision assistant built for PromptWars Challenge 6. It combines verified Open-Meteo and Copernicus CAMS atmospheric models with deterministic protection logic and server-side Google Gemini." |
-| **0:25 – 0:50** | Click the city search box. Type `Pune`. Select `Pune, Maharashtra, India` from the live geocoding dropdown. Show the live US AQI (140), PM2.5 (41 µg/m³), PM10, Ozone, and 24-hour hourly trend chart update. | "We search for Pune. Live geocoding pulls current CAMS modeled pollution readings and a 72-hour forecast directly from external APIs. The language model never invents or paints these numbers." |
-| **0:50 – 1:20** | In Household Profile: Select **Family**, check **Children**, choose priorities **School** and **Home**, select **No new purchases** budget, and set **90 outdoor minutes** starting at 8:00 AM. Click **Generate Protection Plan**. | "Meet a Pune family planning around winter smog. They have school-age children, need 90 minutes outdoors, and have zero budget for expensive air purifiers. Our deterministic rules engine personalizes guidance based on their exact vulnerabilities." |
-| **1:20 – 1:55** | Scroll through the generated plan. Point to: 1) `[outdoor]` Strenuous exposure reduction, 2) `[school]` School run guidance, 3) `[home]` Cleaner-air room, 4) `[budget]` No-purchase habits first. Point out the **Timing Shift Comparison** (e.g., shifting from 8:00 AM to 3:00 PM shows a modeled 27.6% PM2.5 drop, with an explicit caveat that it is modeled particulate difference, not personal dose). | "Notice the four targeted action cards and our 24-hour timing shift. The system identifies a lower PM2.5 window tomorrow afternoon, but honestly disclaims that this is a modeled atmospheric difference, not a guarantee of safe exposure." |
-| **1:55 – 2:30** | Scroll to **Sustainable Swaps**: Show `[combustion-swap]` (replacing incense/candles with non-burning options) and `[pickup-swap]` (turning off idling engines at school pickup). Explain each swap's direct physical mechanism. | "AirWise promotes emission reduction at the source. Instead of inventing fake CO2 savings percentages, it explains the direct physical mechanism behind eliminating indoor burning and turning off vehicle idling." |
-| **2:30 – 3:05** | Check the **Enable Gemini Personalization** toggle. Show the live Gemini-generated briefing. Then in the follow-up box, type: `How can we reduce idling at school pickup?` Click Ask. Read the structured response. Then type a second question: `We cannot buy a purifier. Which indoor smoke sources can we remove?` Click Ask and observe the distinctly different, relevant advice. | "We opt into Gemini. Hosted server-side on Google Cloud Run with Gemini 2.5 Flash, it produces grounded briefs and answers contextual questions without fabricating sensor data or medical percentage claims." |
-| **3:05 – 3:25** | In city search, type `Xyzzyville`. Press Enter. Show the clean `No matching cities found` state. Show that the dashboard does NOT invent a fake location or crash. Then click back to `Pune`. Click **Copy Community Brief**, paste into Notepad to show that private household medical flags are stripped from public notices. Briefly open **Print View**. | "Negative test: invalid searches fail gracefully without hallucinated data. When sharing a community bulletin, private household health details are stripped automatically." |
-| **3:25 – 3:40** | Switch persona to **Outdoor Worker**. Click Generate. Show the cards immediately change to occupational safety (`[worker]`). Conclude by showing the public GitHub repository on branch `main` with passing CI. | "Changing personas instantly adapts the advice from family routines to occupational safety. AirWise is fully deployed on Cloud Run, open-source on GitHub, and verified for Challenge 6." |
+| 0:00–0:20 | Open the app. Point to the "Read the scale correctly" notice and the model timestamp. | "AirWise helps families plan around winter smog. It uses modeled Open-Meteo and CAMS data and labels it as US AQI, not India's official CPCB index." |
+| 0:20–0:45 | Type `Pune` in the city search, press Enter, select **Pune, Maharashtra, India**. Show current US AQI, PM2.5, PM10, the 24-hour chart and the data stamp. | "These readings come from the forecast service with their source and time. The language model never produces these numbers." |
+| 0:45–1:10 | Confirm **Enable Gemini personalization is off**. Set persona **Family & household**, tick **Children in household**, priorities **School** and **Home**, budget **No new purchases**, outdoor hour **08:00**, outdoor minutes **90**. Click **Build my protection plan**. | "A Pune family with children, a ninety-minute outing at eight, a fixed school pickup and no budget for new equipment." |
+| 1:10–1:40 | Show the **What if you shift?** card. Read the live percentage, the two times and the two PM2.5 averages. | "Over the whole ninety minutes, the later start has a lower average modeled outdoor PM2.5. That is a forecast difference, not a personal dose or a health-risk reduction." |
+| 1:40–2:05 | Show the action cards. Open one **Why this matters** on the school or home card. Scroll to the sustainable swaps: no-flame alternatives and switching off a parked engine at pickup. | "Each action states its direct mechanism. No invented emission savings." |
+| 2:05–2:20 | Click **Copy community brief** and paste it into a text editor. | "The public brief carries the city, source, time and a community action. Household health choices are excluded." |
+| 2:20–2:35 | Type `Xyzzyville` in the city search and press Enter. Show "No matching city found". Click the **Pune** shortcut. | "An unknown city produces no invented location or readings." |
+| 2:35–3:35 | Turn **Enable Gemini personalization** on. Click **Build my protection plan** (call 1). Pause on the briefing. Ask `How can we reduce idling at school pickup?` (call 2). Pause on the answer. Ask `We cannot buy a purifier. Which indoor smoke sources can we remove?` (call 3). Pause on the answer. | "With consent, Gemini turns the verified plan into a briefing and answers follow-up questions. The rule-based plan stays the source of truth if AI is unavailable." |
+| 3:35–3:45 | Show the public GitHub repository and its passing Actions run. | "AirWise runs on Cloud Run; the code and tests are public." |
 
-**Total Duration:** ~3:38 (well within the 3:30–3:45 target, under 4-minute maximum).
+Keep questions free of digits so the model has no number to repeat; prose containing digits is rejected by the server.
+
+Optional if time allows, before the Gemini segment and with Gemini still off: switch persona to **Outdoor worker**, rebuild, show the occupational card, then switch back to **Family & household**. This costs no Gemini calls but adds about 15 seconds.
+
+## After recording
+
+Trim to under 4:00 if needed. Upload as unlisted YouTube or a publicly shared Drive file and play it in a signed-out window before using the URL.

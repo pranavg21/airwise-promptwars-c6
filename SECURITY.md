@@ -14,7 +14,7 @@ No users are asked to register or log in. The application has no persistent prof
 | Malformed AI structured output | Strict JSON schema prompt plus server-side Pydantic length/shape validation | A structurally valid model answer may still be incorrect; vet content and ground only in provided facts |
 | Unwanted Gemini use | Opt-in boolean enforced on both routes, clear `ai_status` statuses | Users must understand provider data-processing terms |
 | Prompt injection through user question | Explicit untrusted-data instruction and bounded, audited context | LLM prompt-injection risk cannot be eliminated by prompts alone |
-| Cost/quota abuse | 12 AI calls/10 min/IP/process; JSON request size limit, 18-second upstream timeout | In-memory rate gate is not global across multiple replicas; add gateway limits and budgets |
+| Cost/quota abuse | 12 AI calls/10 min per client address per process; JSON request size limit; 28-second Gemini read timeout | The binding limit is the Gemini daily quota of the key-owning Google Cloud project, shared by all traffic on that project. The in-memory gate is not global across replicas, and behind a proxy the visible client address may be shared by many visitors. Add gateway limits, budgets and alerts for larger audiences |
 | Private data in third-party logs | No app-level profile persistence, no raw profile logs in application code | Infrastructure may log request metadata; observe provider retention policies |
 | Inaccurate pollution information | No fabricated readings, explicit model provenance and US vs India index distinction | Forecasts may disagree with measured station values; official alerts take priority |
 | Elevated medical-risk advice | No diagnosis or treatment changes, sensitivity-based rules, safety disclaimer | Professional medical care not replaced |
@@ -22,7 +22,7 @@ No users are asked to register or log in. The application has no persistent prof
 ## Secrets checklist
 
 1. Never paste secrets in a LinkedIn post, video, Git commit, `.env.example` or frontend source.
-2. Use Render/host secret environment configuration only; limit deployment access.
+2. Use the host secret store only (Secret Manager on Cloud Run); limit deployment access.
 3. Verify `git grep 'AIzaSy'` (if it matches a real key, revoke the key before publishing).
 4. Run `python scripts/audit_repo.py`; also inspect Git history before submission.
 5. Apply server side API quotas, monitor costs, rotate exposed credentials.

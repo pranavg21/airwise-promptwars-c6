@@ -84,13 +84,13 @@ To activate real Gemini answers, set a **server-side** environment variable, e.g
 
 ```powershell
 $env:GEMINI_API_KEY="YOUR_GOOGLE_AI_STUDIO_API_KEY"
-$env:GEMINI_MODEL="gemini-3.5-flash-lite"
+$env:GEMINI_MODEL="gemini-2.5-flash"
 uvicorn airwise.main:app --reload
 ```
 
-On Linux/macOS, use `export GEMINI_API_KEY=...` and `export GEMINI_MODEL=gemini-3.5-flash-lite` before launching. **Never put a key in HTML, browser JavaScript, a committed `.env` or the README.** If no key is configured, the deterministic policy still works, but the app correctly labels the AI feature unavailable instead of fabricating an AI response.
+On Linux/macOS, use `export GEMINI_API_KEY=...` and `export GEMINI_MODEL=gemini-2.5-flash` before launching. **Never put a key in HTML, browser JavaScript, a committed `.env` or the README.** If no key is configured, the deterministic policy still works, but the app correctly labels the AI feature unavailable instead of fabricating an AI response.
 
-The model identifier is configurable because Google can deprecate models. The default is Gemini 3.5 Flash-Lite. Verify model access with the deployed smoke check. Check the official [model deprecations page](https://ai.google.dev/gemini-api/docs/deprecations) if deployment fails.
+The code default and the deployed model are `gemini-2.5-flash`. The identifier is configurable through `GEMINI_MODEL` because Google retires and reroutes models. Google has published lifecycle changes for the 2.5 family, so check the official [model deprecations page](https://ai.google.dev/gemini-api/docs/deprecations) and confirm structured responses from any replacement model before relying on it. Free-tier Gemini limits apply per Google Cloud project and per model, and daily limits reset at midnight Pacific time; the live limit for a project is shown in Google AI Studio.
 
 ## 4. Run the quality gates
 
@@ -100,9 +100,9 @@ python -m pytest -q --cov=airwise --cov-branch --cov-report=term-missing --cov-f
 python scripts/audit_repo.py
 ```
 
-**Verification:** Eleven new regression tests passed locally. See [the verification record](docs/VERIFICATION.md) for versions, coverage limitations, browser checks and the hosted Gemini test.
+**Verification:** every push to `main` runs the [AirWise Quality Gate](https://github.com/pranavg21/airwise-promptwars-c6/actions) on Ubuntu with Python 3.12: compilation, the full pytest suite with branch coverage (80% minimum), the repository audit, and a desktop and mobile Chromium walkthrough. Automated tests replace Open-Meteo and Gemini with controlled fakes, so they make no live provider calls. See [the verification record](docs/VERIFICATION.md) for what is covered, what was checked live, and what remains manual.
 
-There is no client-side use of `innerHTML` to display API or GenAI strings; the UI creates text nodes. We test validation, rate limits, modeled data parsing, sensitive profiles, unavailable sources, opt-in behavior, malformed AI output, the AQI category boundaries and sustainable-swap explanations.
+There is no client-side use of `innerHTML` to display API or GenAI strings; the UI creates text nodes. We test validation, rate limits, modeled data parsing, sensitive profiles, unavailable sources, opt-in behavior, malformed or truncated AI output, an upstream Gemini quota rejection on both AI routes, the AQI category boundaries and sustainable-swap explanations.
 
 See [docs/VERIFICATION.md](docs/VERIFICATION.md) for an adversarial go/no-go checklist.
 
@@ -132,7 +132,7 @@ gcloud run deploy airwise-promptwars-c6 \
 1. Live URL: `https://airwise-promptwars-c6-897669266422.asia-south1.run.app`
 2. Secret `airwise-gemini-api-key` is securely injected from Secret Manager into container memory; no secret is exposed in client-side code, Git, or logs.
 3. Open `https://airwise-promptwars-c6-897669266422.asia-south1.run.app/api/health` to confirm `status: ok` and `ai_configured: true`.
-4. Scale-to-zero (`--min-instances 0`) ensures $0 idle hosting costs within Google Cloud free tiers.
+4. Scale-to-zero (`--min-instances 0`) avoids paying for idle instances. It does not by itself guarantee a zero bill; Cloud Build, Artifact Registry, Secret Manager and request charges depend on the project and its free-tier usage.
 
 **Option B — any Docker host:**
 
