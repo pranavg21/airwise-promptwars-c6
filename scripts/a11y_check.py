@@ -6,29 +6,13 @@ are all replaced in-process, so no external service is called.
 """
 
 import asyncio
-import os
-import socket
 import sys
 from collections import Counter
-from unittest.mock import AsyncMock, patch
 
-import uvicorn
 from axe_playwright_python.async_playwright import Axe
-from playwright.async_api import Page, async_playwright, expect
+from playwright.async_api import Browser, Page, expect
 
-from airwise import main
-from airwise.models import AiResponse, Location
-from scripts.browser_check import synthetic_air
-
-CITIES = [
-    Location(name="Pune", country="India", region="Maharashtra", latitude=18.5204, longitude=73.8567),
-    Location(name="Pune Cantonment", country="India", region="Maharashtra", latitude=18.5, longitude=73.88),
-]
-BRIEF = AiResponse(
-    summary="Keep the morning outing gentle and move strenuous play to a cleaner hour.",
-    steps=["Switch off the engine while waiting at the school gate.", "Avoid incense and candles indoors."],
-    rationale="These steps reduce exposure and remove avoidable smoke without new purchases.",
-)
+from scripts.harness import CITIES, chromium, hold_responses, served_app
 
 
 async def scan(page: Page, label: str, results: dict[str, Counter]) -> None:
@@ -120,26 +104,16 @@ async def keyboard_walkthrough(page: Page, problems: list[str]) -> None:
 
 async def stale_search_dismissal(page: Page, dismiss: str, problems: list[str]) -> None:
     """Dismiss suggestions before the city search responds; the late response must stay silent."""
-    started, release, delivered = asyncio.Event(), asyncio.Event(), asyncio.Event()
-
-    async def hold(route) -> None:
-        response = await route.fetch()
-        started.set()
-        await release.wait()
-        await route.fulfill(response=response)
-        delivered.set()
-
-    await page.route("**/api/geo*", hold)
+    held = await hold_responses(page, "**/api/geo*")
     await page.locator("#citySearch").focus()
     await page.keyboard.type("Pune")
     await page.keyboard.press("Enter")
-    await asyncio.wait_for(started.wait(), 5)
+    await held.wait_until_requested()
     if dismiss == "Escape":
         await page.keyboard.press("Escape")
     else:
         await page.locator("#heroTitle").click()
-    release.set()
-    await asyncio.wait_for(delivered.wait(), 5)
+    await held.deliver()
     await page.wait_for_timeout(300)
     label = f"dismissed by {dismiss} before results arrived"
     if await page.locator("#cityResults").is_visible():
@@ -154,57 +128,39 @@ async def stale_search_dismissal(page: Page, dismiss: str, problems: list[str]) 
     await page.unroute("**/api/geo*")
 
 
+async def scan_widths(browser: Browser, base: str, results: dict[str, Counter], problems: list[str]) -> None:
+    for width in (1366, 390):
+        page = await browser.new_page(viewport={"width": width, "height": 860}, reduced_motion="reduce")
+        await page.goto(base)
+        await built_plan(page)
+        await scan(page, f"{width}px built plan", results)
+        await page.evaluate("() => document.querySelectorAll('details').forEach(d => { d.open = true; })")
+        await scan(page, f"{width}px built plan, all disclosures open", results)
+
+        await page.locator("#citySearch").fill("Pune")
+        await page.locator("#citySearch").press("Enter")
+        await expect(page.locator("#cityResults button").first).to_be_visible()
+        await scan(page, f"{width}px city suggestions open", results)
+
+        await page.goto(base)
+        await ai_rendered(page)
+        await scan(page, f"{width}px AI briefing and answer (mocked)", results)
+
+        await page.goto(base)
+        before = len(problems)
+        await keyboard_walkthrough(page, problems)
+        for dismiss in ("Escape", "a click outside"):
+            await page.goto(base)
+            await stale_search_dismissal(page, dismiss, problems)
+        problems[before:] = [f"{width}px: {p}" for p in problems[before:]]
+        await page.close()
+
+
 async def run() -> int:
     results: dict[str, Counter] = {}
     problems: list[str] = []
-    gemini = AsyncMock(return_value=BRIEF)
-    with (
-        socket.socket() as sock,
-        patch.dict(os.environ, {"GEMINI_API_KEY": "test-only-key"}),
-        patch.object(main, "fetch_air", synthetic_air),
-        patch.object(main, "search_locations", AsyncMock(return_value=CITIES)),
-        patch.object(main, "personalize", gemini),
-    ):
-        sock.bind(("127.0.0.1", 0))
-        server = uvicorn.Server(uvicorn.Config(main.app, log_level="error"))
-        task = asyncio.create_task(server.serve(sockets=[sock]))
-        base = f"http://127.0.0.1:{sock.getsockname()[1]}"
-        try:
-            async with async_playwright() as pw:
-                browser = await pw.chromium.launch(executable_path=os.getenv("CHROMIUM_PATH"))
-                for width in (1366, 390):
-                    page = await browser.new_page(
-                        viewport={"width": width, "height": 860}, reduced_motion="reduce"
-                    )
-                    await page.goto(base)
-                    await built_plan(page)
-                    await scan(page, f"{width}px built plan", results)
-                    await page.evaluate(
-                        "() => document.querySelectorAll('details').forEach(d => { d.open = true; })"
-                    )
-                    await scan(page, f"{width}px built plan, all disclosures open", results)
-
-                    await page.locator("#citySearch").fill("Pune")
-                    await page.locator("#citySearch").press("Enter")
-                    await expect(page.locator("#cityResults button").first).to_be_visible()
-                    await scan(page, f"{width}px city suggestions open", results)
-
-                    await page.goto(base)
-                    await ai_rendered(page)
-                    await scan(page, f"{width}px AI briefing and answer (mocked)", results)
-
-                    await page.goto(base)
-                    before = len(problems)
-                    await keyboard_walkthrough(page, problems)
-                    for dismiss in ("Escape", "a click outside"):
-                        await page.goto(base)
-                        await stale_search_dismissal(page, dismiss, problems)
-                    problems[before:] = [f"{width}px: {p}" for p in problems[before:]]
-                    await page.close()
-                await browser.close()
-        finally:
-            server.should_exit = True
-            await task
+    async with served_app(CITIES) as (base, mocks), chromium() as browser:
+        await scan_widths(browser, base, results, problems)
 
     failed = bool(problems)
     for label, counts in results.items():
@@ -219,7 +175,7 @@ async def run() -> int:
             "PASS keyboard: search, suggestion navigation, Escape, selection, form continuation"
             " and dismissal of a pending search"
         )
-    print(f"Gemini mock calls: {gemini.await_count} (no live provider calls)")
+    print(f"Gemini mock calls: {mocks.gemini.await_count} (no live provider calls)")
     return 1 if failed else 0
 
 

@@ -65,3 +65,27 @@ async def test_rate_limit_says_when_to_retry(client, monkeypatch):
     assert first.status_code == 200
     assert second.status_code == 429
     assert second.headers["retry-after"] == str(main.config.RATE_WINDOW_S)
+
+
+async def test_page_assets_all_load(client):
+    """Every stylesheet, script and icon the page links must load, so no 404 reaches the console."""
+    import re
+
+    async with client as c:
+        page = (await c.get("/")).text
+        assets = re.findall(r'(?:href|src)="(/static/[^"]+)"', page)
+        statuses = {path: (await c.get(path)).status_code for path in assets}
+        favicon = await c.get("/favicon.ico")
+    assert "/static/favicon.svg" in assets and "/static/js/app.js" in assets
+    assert all(status == 200 for status in statuses.values()), statuses
+    assert favicon.status_code == 200
+    assert favicon.headers["content-type"].startswith("image/svg+xml")
+
+
+@pytest.mark.parametrize("path", ["/", "/favicon.ico", "/api/health", "/static/css/base.css"])
+async def test_head_requests_succeed_for_uptime_probes(client, path):
+    async with client as c:
+        response = await c.head(path)
+    assert response.status_code == 200
+    assert response.content == b""
+    assert response.headers["x-content-type-options"] == "nosniff"

@@ -1,4 +1,5 @@
 /** Accessible SVG chart and data table for the 24-hour outlook; no dependencies, no HTML injection. */
+/** @import { Hour, RatedHour } from "./types" */
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const WIDTH = 600;
@@ -16,18 +17,30 @@ const GRID_COLOR = "#e4e9e2";
 
 /**
  * Whether an hour has a plottable AQI value.
- * @param {{us_aqi: unknown}} hour
+ * @param {Hour} hour
+ * @returns {hour is RatedHour}
  */
 export function hasFiniteAqi(hour) {
   return typeof hour.us_aqi === "number" && Number.isFinite(hour.us_aqi);
 }
 
+/**
+ * @param {string} tag
+ * @param {Record<string, string | number>} [attributes]
+ * @returns {SVGElement}
+ */
 function svgNode(tag, attributes = {}) {
   const element = document.createElementNS(SVG_NS, tag);
   for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, String(value));
   return element;
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @param {string} text
+ * @param {string} [anchor]
+ */
 function label(x, y, text, anchor = "start") {
   const element = svgNode("text", {
     x,
@@ -41,7 +54,11 @@ function label(x, y, text, anchor = "start") {
   return element;
 }
 
-/** Map an hour index and an AQI value to SVG coordinates. */
+/**
+ * Map an hour index and an AQI value to SVG coordinates.
+ * @param {Hour[]} hours
+ * @param {RatedHour[]} valid
+ */
 function scales(hours, valid) {
   const yMax = Math.max(
     MIN_Y_MAX,
@@ -51,11 +68,14 @@ function scales(hours, valid) {
   const plotHeight = HEIGHT - MARGIN.top - MARGIN.bottom;
   return {
     yMax,
+    /** @param {number} index */
     x: (index) => MARGIN.left + (index * plotWidth) / Math.max(1, hours.length - 1),
+    /** @param {number} value */
     y: (value) => MARGIN.top + ((yMax - value) * plotHeight) / yMax,
   };
 }
 
+/** @param {ReturnType<typeof scales>} scale */
 function gridLines(scale) {
   const elements = [];
   for (let step = 0; step <= GRID_LINES; step++) {
@@ -76,6 +96,10 @@ function gridLines(scale) {
   return elements;
 }
 
+/**
+ * @param {Hour[]} hours
+ * @param {ReturnType<typeof scales>} scale
+ */
 function timeLabels(hours, scale) {
   const elements = [];
   const every = Math.max(1, Math.floor(hours.length / TIME_LABELS));
@@ -85,7 +109,11 @@ function timeLabels(hours, scale) {
   return elements;
 }
 
-/** One path; gaps in the forecast start a new segment instead of drawing through them. */
+/**
+ * One path; gaps in the forecast start a new segment instead of drawing through them.
+ * @param {Hour[]} hours
+ * @param {ReturnType<typeof scales>} scale
+ */
 function trendLine(hours, scale) {
   let path = "";
   let startSegment = true;
@@ -107,27 +135,26 @@ function trendLine(hours, scale) {
   });
 }
 
+/**
+ * @param {Hour[]} hours
+ * @param {ReturnType<typeof scales>} scale
+ */
 function points(hours, scale) {
-  const isMarked = (index) => index % POINT_EVERY_HOURS === 0 || index === hours.length - 1;
-  return hours
-    .map((hour, index) => ({ hour, index }))
-    .filter(({ hour, index }) => typeof hour.us_aqi === "number" && isMarked(index))
-    .map(({ hour, index }) =>
-      svgNode("circle", {
-        cx: scale.x(index),
-        cy: scale.y(hour.us_aqi),
-        r: 3.3,
-        fill: POINT_COLOR,
-        stroke: "#fff",
-        "stroke-width": 2,
-      }),
-    );
+  const last = hours.length - 1;
+  /** @type {SVGElement[]} */
+  const circles = [];
+  hours.forEach((hour, index) => {
+    if (!hasFiniteAqi(hour) || (index % POINT_EVERY_HOURS !== 0 && index !== last)) return;
+    const attributes = { cx: scale.x(index), cy: scale.y(hour.us_aqi), r: 3.3, fill: POINT_COLOR };
+    circles.push(svgNode("circle", { ...attributes, stroke: "#fff", "stroke-width": 2 }));
+  });
+  return circles;
 }
 
 /**
  * Draw the modeled US AQI line for the given hours into `target`.
  * @param {HTMLElement} target
- * @param {Array<{time: string, us_aqi: number | null}>} hours
+ * @param {Hour[]} hours
  */
 export function renderChart(target, hours) {
   target.replaceChildren();
@@ -160,7 +187,7 @@ export function renderChart(target, hours) {
 /**
  * Fill the accessible table that carries the same hourly values as the chart.
  * @param {HTMLElement} target A tbody element.
- * @param {Array<{time: string, us_aqi: number | null, pm2_5: number | null}>} hours
+ * @param {Hour[]} hours
  */
 export function renderHourTable(target, hours) {
   target.replaceChildren();

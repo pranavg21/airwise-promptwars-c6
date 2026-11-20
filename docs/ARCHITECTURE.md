@@ -101,6 +101,9 @@ Single Python process, static assets served from `/static`, API served under `/a
 - CSP and security response headers, rate limiting, publicly accessible UI
 - Gemini answer reuse, failures never cached, deadline, fallback model, failure logging without secrets (`tests/test_ai_resilience.py`)
 - HSTS, COOP and CORP headers, cross-site write rejection and `Retry-After` (`tests/test_security.py`)
-- Browser modules without DOM side effects: formatting, forecast selection, community brief (`tests/js/pure-modules.test.js`)
+- Browser modules without DOM side effects: formatting, chartable values, city query encoding, API path validation, community brief (`tests/js/pure-modules.test.js`)
+- Edge cases: malformed forecasts, skipped hours, a repeated clock hour, cache expiry, request guards, rate-limiter eviction, geocoder outage, exhausted AI time, model validation (`tests/test_edge_cases.py`)
+- The 24-hour outlook shared by `/api/air` and `/api/plan` for an incomplete forecast (`tests/test_forecast.py`)
+- Every planted bug in `scripts/mutation_check.py` must make a suite fail
 
 Note: all sample values in automated tests are **synthetic fixtures**, not live pollution readings.

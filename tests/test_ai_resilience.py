@@ -161,3 +161,30 @@ def test_settings_validate_models_and_ignore_duplicate_fallback(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY")
     with pytest.raises(config.ConfigurationError):
         config.gemini_settings()
+
+
+def _raise(error):
+    def handler(request):
+        raise error(request)
+
+    return handler
+
+
+@pytest.mark.parametrize(
+    ("respond", "reason"),
+    [
+        (lambda request: httpx.Response(200, content=b"x" * (config.MAX_GEMINI_BYTES + 1)), "oversize"),
+        (_raise(lambda request: httpx.ReadTimeout("slow", request=request)), "timeout"),
+        (_raise(lambda request: httpx.ConnectError("refused", request=request)), "transport_or_envelope"),
+        (lambda request: httpx.Response(200, content=b"not json"), "transport_or_envelope"),
+        (lambda request: httpx.Response(200, json=[]), "envelope"),
+        (lambda request: httpx.Response(200, json={"promptFeedback": {"blockReason": "SAFETY"}}), "envelope"),
+    ],
+    ids=["oversize", "timeout", "connection", "not-json", "not-an-object", "no-candidates"],
+)
+async def test_every_upstream_failure_is_unavailable_with_a_reason(gemini, snapshot, caplog, respond, reason):
+    _, script = gemini
+    script["handler"] = respond
+    with caplog.at_level(logging.WARNING, logger="airwise.ai"), pytest.raises(AiUnavailableError):
+        await personalize(*plan_inputs(snapshot))
+    assert f"reason={reason}" in caplog.text

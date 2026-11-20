@@ -62,12 +62,19 @@ async def snapshot_or_503(location: Location, detail: str) -> Snapshot:
         raise HTTPException(status_code=503, detail=detail) from exc
 
 
-@app.get("/", include_in_schema=False)
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 async def home() -> FileResponse:
     return FileResponse(STATIC / "index.html", media_type="text/html")
 
 
+@app.api_route("/favicon.ico", methods=["GET", "HEAD"], include_in_schema=False)
+async def favicon() -> FileResponse:
+    """Browsers and crawlers request /favicon.ico directly; serve the page icon instead of a 404."""
+    return FileResponse(STATIC / "favicon.svg", media_type="image/svg+xml")
+
+
 @app.get("/api/health")
+@app.head("/api/health", include_in_schema=False)
 async def health() -> dict[str, Any]:
     return {"status": "ok", "ai_configured": configured(), "source": "Open-Meteo/CAMS modeled air quality"}
 

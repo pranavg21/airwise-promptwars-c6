@@ -1,5 +1,6 @@
 /** Rendering of the rule-based plan, timing comparison, swaps and Gemini text. */
 import { $, clock, node, safeNumber } from "./dom.js";
+/** @import { Advice, AiReply, Hour, PlanResponse, Policy, Shift } from "./types" */
 
 // Only these source links are rendered as anchors, whatever the server sends.
 const WELL_KNOWN_REFERENCES = new Set([
@@ -11,8 +12,13 @@ const WELL_KNOWN_REFERENCES = new Set([
   "https://www.epa.gov/schools/idle-free-schools-toolkit-healthy-school-environment",
   "https://www.epa.gov/indoor-air-quality-iaq/sources-indoor-particulate-matter-pm",
 ]);
+/** @type {Record<string, string>} */
 const AI_STATUS_LABELS = { generated: "✦ GEMINI GENERATED", not_requested: "NOT REQUESTED" };
 
+/**
+ * @param {Advice} card
+ * @param {number} index
+ */
 function adviceCard(card, index) {
   const article = node("article", "", "advice-card");
   const top = node("div", "", "advice-top");
@@ -33,6 +39,7 @@ function adviceCard(card, index) {
   return article;
 }
 
+/** @param {Advice} swap */
 function swapCard(swap) {
   const card = node("article", "", "swap-card");
   card.append(
@@ -44,6 +51,7 @@ function swapCard(swap) {
   return card;
 }
 
+/** @param {Shift} shift */
 function shiftComparison(shift) {
   const timeline = node("div", "", "shift-timeline");
   timeline.append(
@@ -67,6 +75,7 @@ function shiftComparison(shift) {
   ];
 }
 
+/** @param {Hour} best */
 function lowestHourOnly(best) {
   return [
     node("div", clock(best.time), "shift-val compact"),
@@ -78,7 +87,7 @@ function lowestHourOnly(best) {
   ];
 }
 
-/** @param {object} policy Plan returned by /api/plan. */
+/** @param {Policy} policy Plan returned by /api/plan. */
 function renderShift(policy) {
   const target = $("shiftResult");
   if (policy.shift) target.replaceChildren(...shiftComparison(policy.shift));
@@ -100,10 +109,10 @@ function renderShift(policy) {
 
 /**
  * Render the deterministic plan: action cards, timing comparison, swaps and decision trace.
- * @param {object} policy Plan returned by /api/plan.
+ * @param {Policy} policy Plan returned by /api/plan.
  */
 export function renderRecommendations(policy) {
-  $("copyBtn").disabled = $("printBtn").disabled = false;
+  $("copyBtn", HTMLButtonElement).disabled = $("printBtn", HTMLButtonElement).disabled = false;
   $("planSubtitle").textContent = policy.headline;
   $("recommendations").replaceChildren(...policy.cards.map(adviceCard));
   renderShift(policy);
@@ -116,7 +125,7 @@ export function renderRecommendations(policy) {
 
 /**
  * Render the Gemini briefing, or say plainly why there is none.
- * @param {{ai_status: string, ai: {summary: string, steps: string[], rationale: string} | null}} data
+ * @param {Pick<PlanResponse, "ai_status" | "ai">} data
  */
 export function renderAi(data) {
   const target = $("aiContent");
@@ -153,7 +162,7 @@ export function renderAi(data) {
 
 /**
  * Render a Gemini answer to a follow-up question.
- * @param {{summary: string, steps: string[], rationale: string}} reply
+ * @param {AiReply} reply
  */
 export function renderAnswer(reply) {
   const box = node("div", "", "ask-answer");

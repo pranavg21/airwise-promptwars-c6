@@ -1,17 +1,27 @@
 /** Small DOM helpers. Text is always assigned with textContent, never parsed as HTML. */
 
 /**
+ * The element with this id, checked to be of `type` (HTMLElement by default).
+ * A missing or different element throws at once, so a markup change cannot fail silently later.
+ * @template {HTMLElement} [T=HTMLElement]
  * @param {string} id
- * @returns {HTMLElement}
+ * @param {{new (): T, readonly name: string}} [type]
+ * @returns {T}
  */
-export const $ = (id) => document.getElementById(id);
+export function $(id, type) {
+  const element = document.getElementById(id);
+  const expected = type ?? HTMLElement;
+  if (!(element instanceof expected)) throw new Error(`Expected #${id} to be ${expected.name}`);
+  return /** @type {T} */ (element);
+}
 
 /**
  * Create an element holding plain text.
- * @param {string} tag
+ * @template {keyof HTMLElementTagNameMap} K
+ * @param {K} tag
  * @param {unknown} [text]
  * @param {string} [className]
- * @returns {HTMLElement}
+ * @returns {HTMLElementTagNameMap[K]}
  */
 export function node(tag, text = "", className = "") {
   const element = document.createElement(tag);

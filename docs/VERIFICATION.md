@@ -6,8 +6,9 @@ This record separates three kinds of evidence: automated tests (controlled fakes
 
 The [AirWise Quality Gate](https://github.com/pranavg21/airwise-promptwars-c6/actions) runs on every push to `main` (Ubuntu, Python 3.12, Node 22, pinned dependencies) in three jobs:
 
-- **Python:** `ruff check .` (pyflakes, bugbear, naming, imports and a McCabe complexity limit of 10), `ruff format --check .`, `mypy --strict` on `airwise/`, pytest with branch coverage (90% minimum), `pip-audit -r requirements.txt`, `scripts/audit_repo.py` (size under 10 MB, secret scan) and a single-branch check.
-- **Frontend:** ESLint (complexity 10, 40 lines per function, 200 lines per file), Prettier `--check`, Node unit tests and `npm audit`.
+- **Python:** `ruff check .` (pyflakes, bugbear, naming, imports and a McCabe complexity limit of 10), `ruff format --check .`, `mypy --strict` on `airwise/`, pytest with 100% statement and branch coverage required, `scripts/mutation_check.py` (13 planted bugs, each must make a suite fail), `pip-audit -r requirements.txt`, `scripts/audit_repo.py` (size under 10 MB, secret scan) and a single-branch check.
+- **Frontend:** ESLint (complexity 10, 40 lines per function, 200 lines per file), Prettier `--check`, strict TypeScript checking of `static/js` (`checkJs`, `strict`, no unused locals or parameters), Node unit tests and `npm audit`.
+- **CodeQL** (separate workflow): security-and-quality queries for Python and JavaScript on every push and weekly.
 - **Browser:** `scripts/browser_check.py` (Chromium at 1366 px and 390 px) and `scripts/a11y_check.py` (axe-core 4.12.1 via `axe-playwright-python==0.1.8`, plus a keyboard walkthrough).
 
 Recorded results:
@@ -35,6 +36,10 @@ What the automated suite covers:
 - Browser: city selection, profile change clearing the plan, a delayed plan response arriving after a city change, a provider outage, horizontal overflow at 390 px, an incomplete forecast whose lowest reading lies exactly 24 hours ahead (the dashboard must show the in-window lowest), a city name with an apostrophe, and a delayed Gemini answer discarded after the settings change (`scripts/browser_check.py`, synthetic air data, mocked city search and Gemini)
 - The 24-hour outlook counted by elapsed time, with `/api/air` and `/api/plan` returning the same hours and lowest hour for an incomplete forecast; an apostrophe city query reaching the geocoder intact (`tests/test_forecast.py`)
 - Accessibility, in the mocked CI walkthrough: zero axe violations for a built plan, the same plan with every disclosure open, open city suggestions, and an AI briefing and answer rendered from mocked Gemini responses, each at 1366 px and 390 px; a keyboard user can reach city search with a visible focus indicator, open and move through suggestions, dismiss them with Escape, select Pune, and continue to build a plan; a city search dismissed by Escape or by a click outside before it responds stays closed and silent (`scripts/a11y_check.py`)
+
+### Lighthouse, run locally (not in CI)
+
+Lighthouse 13.6.0 against the app served locally with synthetic data: Performance 100, Accessibility 100, SEO 100, Best Practices 96. The one failing audit was a console error from a missing `/favicon.ico`; the page now links an SVG icon and the server answers `/favicon.ico`, and `tests/test_security.py` checks that every linked asset loads. After the fix, Performance, Accessibility, Best Practices and SEO all scored 100 on desktop and mobile. The same session found that `HEAD /`, `HEAD /favicon.ico` and `HEAD /api/health` returned 405, which an uptime probe would report as down; they now return 200 and are tested.
 
 ### Checks run locally for the quality release (not in CI)
 

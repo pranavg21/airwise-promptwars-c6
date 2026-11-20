@@ -1,11 +1,12 @@
 /** The shareable community brief (pure: no DOM access, no household health choices). */
 import { safeNumber } from "./dom.js";
+/** @import { Policy, Snapshot } from "./types" */
 
 /**
  * Plain-text brief for neighbours: place, source, time, readings and one community action.
  * Household sensitivity selections are deliberately not part of the input.
- * @param {object} snapshot Forecast snapshot from the API.
- * @param {{category: string}} policy Plan returned by the API.
+ * @param {Snapshot} snapshot Forecast snapshot from the API.
+ * @param {Pick<Policy, "category">} policy Plan returned by the API.
  * @returns {string}
  */
 export function communityBrief(snapshot, policy) {

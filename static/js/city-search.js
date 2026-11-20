@@ -6,14 +6,17 @@ import { $, node } from "./dom.js";
 import { conciseError, showNotice } from "./notice.js";
 import { state } from "./state.js";
 import { getJson } from "./transport.js";
+/** @import { Place } from "./types" */
 
 const MIN_QUERY_LENGTH = 3;
 
+/** @param {boolean} open */
 function setResultsOpen(open) {
   $("cityResults").hidden = !open;
   $("citySearchBtn").setAttribute("aria-expanded", String(open));
 }
 
+/** @param {string} message */
 function announce(message) {
   $("cityStatus").textContent = message;
 }
@@ -39,6 +42,10 @@ export function placeLabel(city) {
   return `${city.region ? `${city.region}, ` : ""}${city.country}`;
 }
 
+/**
+ * @param {Place} city
+ * @param {(city: Place) => void} onSelect
+ */
 function resultButton(city, onSelect) {
   const button = node("button", city.name);
   button.type = "button";
@@ -51,6 +58,10 @@ function resultButton(city, onSelect) {
   return button;
 }
 
+/**
+ * @param {Place[]} cities
+ * @param {(city: Place) => void} onSelect
+ */
 function showResults(cities, onSelect) {
   const list = $("cityResults");
   list.replaceChildren();
@@ -65,8 +76,9 @@ function showResults(cities, onSelect) {
   );
 }
 
+/** @param {(city: Place) => void} onSelect */
 async function searchCity(onSelect) {
-  const query = $("citySearch").value.trim();
+  const query = $("citySearch", HTMLInputElement).value.trim();
   if (query.length < MIN_QUERY_LENGTH) {
     setResultsOpen(false);
     showNotice("Type at least 3 characters to search a city.", true);
@@ -86,6 +98,10 @@ async function searchCity(onSelect) {
   }
 }
 
+/**
+ * @param {KeyboardEvent} event
+ * @param {(city: Place) => void} onSelect
+ */
 function onSearchKey(event, onSelect) {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -98,9 +114,10 @@ function onSearchKey(event, onSelect) {
   }
 }
 
+/** @param {KeyboardEvent} event */
 function onResultsKey(event) {
   const buttons = [...$("cityResults").querySelectorAll("button")];
-  const position = buttons.indexOf(document.activeElement);
+  const position = buttons.findIndex((button) => button === document.activeElement);
   if (event.key === "ArrowDown") {
     event.preventDefault();
     buttons[Math.min(position + 1, buttons.length - 1)]?.focus();
@@ -115,7 +132,7 @@ function onResultsKey(event) {
 
 /**
  * Wire the search field, its button and the suggestion list.
- * @param {{onSelect: (city: object) => void, onEdit: () => void}} handlers
+ * @param {{onSelect: (city: Place) => void, onEdit: () => void}} handlers
  *   onSelect runs when a suggestion is chosen; onEdit when the typed text changes.
  */
 export function bindCitySearch({ onSelect, onEdit }) {
@@ -129,7 +146,8 @@ export function bindCitySearch({ onSelect, onEdit }) {
   search.addEventListener("keydown", (event) => onSearchKey(event, onSelect));
   $("cityResults").addEventListener("keydown", onResultsKey);
   document.addEventListener("click", (event) => {
-    if (!event.target.closest(".search-wrap") && !event.target.closest(".city-results")) dismissResults();
+    const target = /** @type {Element} */ (event.target);
+    if (!target.closest(".search-wrap") && !target.closest(".city-results")) dismissResults();
   });
 }
 

@@ -6,6 +6,7 @@ import { aiStatusLabel, askQuestion, copyBrief, generatePlan, resetPlan } from "
 import { clearReadings, displaySnapshot, showLoading, showUnavailable } from "./readings.js";
 import { EXAMPLE_CITIES, state } from "./state.js";
 import { getJson } from "./transport.js";
+/** @import { Place, Snapshot } from "./types" */
 
 function resetReadings() {
   state.readingsVersion++;
@@ -20,6 +21,7 @@ async function loadSnapshot() {
   const version = state.readingsVersion;
   showLoading();
   try {
+    /** @type {Snapshot} */
     const snapshot = await getJson("/api/air", { method: "POST", body: JSON.stringify(state.location) });
     if (version !== state.readingsVersion) return;
     state.snapshot = snapshot;
@@ -34,11 +36,12 @@ async function loadSnapshot() {
   }
 }
 
+/** @param {Place} location */
 function setLocation(location) {
   state.searchVersion++;
   state.location = location;
   state.pendingCity = false;
-  $("citySearch").value = location.name;
+  $("citySearch", HTMLInputElement).value = location.name;
   $("chosenCity").textContent = `${location.name}, ${placeLabel(location)}`;
   closeResults();
   $("aqiCity").textContent = location.name.toUpperCase();
@@ -71,25 +74,28 @@ function bindPlanEvents() {
     void generatePlan();
   });
   form.addEventListener("change", (event) => {
-    if (event.target.id === "citySearch") return;
+    if (/** @type {HTMLElement} */ (event.target).id === "citySearch") return;
     resetPlan();
     showNotice("Preferences changed. Build a plan for the new settings.");
   });
   $("recommendations").addEventListener("click", (event) => {
-    if (event.target.closest("#emptyGenerate")) void generatePlan();
+    if (/** @type {Element} */ (event.target).closest("#emptyGenerate")) void generatePlan();
   });
-  $("askForm").addEventListener("submit", (event) => void askQuestion(event));
+  $("askForm").addEventListener("submit", (event) => void askQuestion(/** @type {SubmitEvent} */ (event)));
+  const question = $("question", HTMLTextAreaElement);
   for (const button of document.querySelectorAll(".sample-question")) {
     button.addEventListener("click", () => {
-      $("question").value = button.textContent.trim();
-      $("question").focus();
+      question.value = (button.textContent ?? "").trim();
+      question.focus();
     });
   }
 }
 
 function bindPageEvents() {
-  for (const button of document.querySelectorAll("[data-city]")) {
-    button.addEventListener("click", () => setLocation(EXAMPLE_CITIES[button.dataset.city]));
+  /** @type {NodeListOf<HTMLButtonElement>} */
+  const shortcuts = document.querySelectorAll("[data-city]");
+  for (const button of shortcuts) {
+    button.addEventListener("click", () => setLocation(EXAMPLE_CITIES[button.dataset.city ?? "delhi"]));
   }
   $("aboutBtn").addEventListener("click", () => $("methodology").scrollIntoView({ behavior: "smooth" }));
   $("refreshBtn").addEventListener("click", () => void loadSnapshot());

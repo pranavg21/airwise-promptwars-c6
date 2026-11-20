@@ -51,7 +51,7 @@ export async function getJson(path, options = {}) {
     if (!response.ok) throw new Error(await errorMessage(response));
     return await response.json();
   } catch (error) {
-    if (error.name === "AbortError") {
+    if (error instanceof Error && error.name === "AbortError") {
       throw new Error("Request timed out. Retry when connectivity improves.", { cause: error });
     }
     throw error;

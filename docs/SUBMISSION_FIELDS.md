@@ -11,9 +11,9 @@
 ---
 
 ### Describe the changes/updates made in the deployed version (max 1,024 characters)
-*Character count: 909 characters*
+*Character count: 930 characters*
 
-AirWise helps families, commuters, outdoor workers and neighbourhood groups plan around winter smog with Open-Meteo/CAMS modeled air data, labelled as US AQI rather than India's CPCB index. Ordered rules choose routines, indoor actions and low-emission swaps, each with its direct mechanism, and compare the whole planned activity across start times. This version restructures the code into single-purpose modules: one AQI definition, rules separated from recommendation text, central configuration, and a split browser codebase checked by ruff, mypy strict, ESLint and Prettier in CI. Gemini calls now have a 40-second budget, a 15-minute answer cache and an optional fallback model. Security headers, cross-site write blocking and patched framework versions were added. Text contrast and keyboard city search meet WCAG AA, with axe-core scans in CI. 117 Python and 10 browser-module tests run on every push.
+AirWise helps families, commuters, outdoor workers and neighbourhood groups plan around winter smog with Open-Meteo/CAMS modeled air data, labelled as US AQI rather than India's CPCB index. Ordered rules choose routines, indoor actions and low-emission swaps, each with its direct mechanism, and compare the whole planned activity across start times. This version defines the 24-hour outlook once, so the dashboard and the plan always use the same hours; accepts city names with apostrophes; and discards late AI answers after settings change. The code is split into single-purpose modules checked in CI by ruff, mypy strict, strict TypeScript, ESLint and Prettier, with 100% branch coverage and a planted-bug check. Gemini calls have a 40-second budget and a 15-minute answer cache. CodeQL, dependency audits, pinned actions and strict security headers protect the service; axe-core and Lighthouse report no accessibility issues.
 
 ---
 
