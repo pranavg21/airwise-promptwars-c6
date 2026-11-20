@@ -29,8 +29,13 @@ CASES = [
 
 
 def snapshot(aqi: float | None) -> Snapshot:
-    return Snapshot(location=LOCATION, retrieved_at="2026-11-20T02:30Z", model_time="2026-11-20T08:00",
-                    timezone="Asia/Kolkata", us_aqi=aqi)
+    return Snapshot(
+        location=LOCATION,
+        retrieved_at="2026-11-20T02:30Z",
+        model_time="2026-11-20T08:00",
+        timezone="Asia/Kolkata",
+        us_aqi=aqi,
+    )
 
 
 def test_bands_are_ordered_and_cover_every_value():
@@ -52,8 +57,10 @@ def test_snapshot_category_matches_classifier(aqi, label, key):
 async def test_dashboard_and_plan_report_the_same_category(aqi, label, key):
     body = {"location": LOCATION.model_dump(), "profile": Profile().model_dump()}
     client = httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app), base_url="http://test")
-    with patch.object(main, "fetch_air", AsyncMock(return_value=snapshot(aqi))), \
-            patch.object(main, "gate", main.RateGate()):
+    with (
+        patch.object(main, "fetch_air", AsyncMock(return_value=snapshot(aqi))),
+        patch.object(main, "gate", main.RateGate()),
+    ):
         async with client:
             air = (await client.post("/api/air", json=LOCATION.model_dump())).json()
             plan = (await client.post("/api/plan", json=body)).json()

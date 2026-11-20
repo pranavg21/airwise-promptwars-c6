@@ -2,20 +2,25 @@
 
 Recommendation text lives in catalog.py; this module decides which entries apply.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from . import catalog
+from . import catalog, config
 from .aqi import Concern, classify
 from .models import Advice, Hour, PolicyResult, Profile, Shift, Snapshot
 
 __all__ = ["classify", "find_lower_hour", "generate_policy", "upcoming_hours"]
 
+MINUTES_PER_HOUR = 60
+# Display rule, not a clinical threshold: smaller modeled differences are not worth a schedule change.
+MIN_SHIFT_DIFFERENCE_PCT = 5.0
 
-def upcoming_hours(snapshot: Snapshot, hours: int = 24) -> list[Hour]:
+
+def upcoming_hours(snapshot: Snapshot, hours: int = config.OUTLOOK_HOURS) -> list[Hour]:
     """Compare matching local timestamps; never compare a past forecast to the present."""
     try:
         now = datetime.fromisoformat(snapshot.model_time)
@@ -40,39 +45,50 @@ def activity_windows(hours: list[Hour], duration: int) -> list[ActivityWindow]:
     if duration <= 0:
         return []
     times = [datetime.fromisoformat(h.time) for h in hours]
-    by_time = dict(zip(times, hours))
+    by_time = dict(zip(times, hours, strict=True))
     if len(by_time) != len(times):
         return []  # Repeated local hour (e.g. clock change) is ambiguous.
     windows = []
     for start in times:
         total = peak = 0.0
-        for minute in range(0, duration, 60):
+        for minute in range(0, duration, MINUTES_PER_HOUR):
             hour = by_time.get(start + timedelta(minutes=minute))
             if hour is None or hour.us_aqi is None or hour.pm2_5 is None:
                 break
-            total += hour.pm2_5 * min(60, duration - minute)
+            total += hour.pm2_5 * min(MINUTES_PER_HOUR, duration - minute)
             peak = max(peak, hour.us_aqi)
         else:
             windows.append(ActivityWindow(by_time[start], total / duration, peak))
     return windows
 
 
+def lowest_aqi_hour(hours: list[Hour]) -> Hour | None:
+    """The earliest hour with the lowest modeled US AQI; hours without AQI are ignored."""
+    rated = [(h.us_aqi, index, h) for index, h in enumerate(hours) if h.us_aqi is not None]
+    return min(rated)[2] if rated else None
+
+
 def find_lower_hour(snapshot: Snapshot, profile: Profile) -> tuple[Hour | None, Shift | None]:
+    """Lowest-AQI hour, and a better start time for the whole activity when one clearly exists."""
     hours = upcoming_hours(snapshot)
-    minimum = min((h for h in hours if h.us_aqi is not None), key=lambda h: h.us_aqi, default=None)
+    minimum = lowest_aqi_hour(hours)
     windows = activity_windows(hours, profile.outdoor_minutes)
-    planned = next((w for w in windows if datetime.fromisoformat(w.start.time).hour == profile.start_hour), None)
+    planned = next(
+        (w for w in windows if datetime.fromisoformat(w.start.time).hour == profile.start_hour), None
+    )
     if planned is None or planned.mean_pm25 == 0:
         return minimum, None
-    alternate = min((w for w in windows if w.peak_aqi <= planned.peak_aqi),
-                    key=lambda w: w.mean_pm25)
+    alternate = min((w for w in windows if w.peak_aqi <= planned.peak_aqi), key=lambda w: w.mean_pm25)
     difference = (1 - alternate.mean_pm25 / planned.mean_pm25) * 100
-    if difference < 5:
+    if difference < MIN_SHIFT_DIFFERENCE_PCT:
         return minimum, None
     return minimum, Shift(
-        current_time=planned.start.time, recommended_time=alternate.start.time,
-        original_pm25=round(planned.mean_pm25, 1), alternate_pm25=round(alternate.mean_pm25, 1),
-        duration_min=profile.outdoor_minutes, relative_difference_pct=round(difference, 1),
+        current_time=planned.start.time,
+        recommended_time=alternate.start.time,
+        original_pm25=round(planned.mean_pm25, 1),
+        alternate_pm25=round(alternate.mean_pm25, 1),
+        duration_min=profile.outdoor_minutes,
+        relative_difference_pct=round(difference, 1),
         caution=catalog.SHIFT_CAUTION,
     )
 
@@ -148,7 +164,22 @@ def headline(situation: Situation) -> str:
     return catalog.HEADLINE_DEFAULT
 
 
+def decision_trace(
+    snapshot: Snapshot, selected: list[Rule], minimum: Hour | None, shift: Shift | None
+) -> list[str]:
+    """Why each recommendation appeared, in the order the rules fired."""
+    trace = [catalog.TRACE_SOURCE]
+    trace += [rule.trace.format(aqi=snapshot.us_aqi) for rule in selected if rule.trace]
+    if minimum and minimum.us_aqi is not None:
+        trace.append(catalog.TRACE_LOWEST_HOUR.format(aqi=minimum.us_aqi, time=minimum.time))
+    if shift:
+        trace.append(catalog.TRACE_SHIFT)
+    trace.append(catalog.TRACE_SWAPS)
+    return trace
+
+
 def generate_policy(snapshot: Snapshot, profile: Profile) -> PolicyResult:
+    """Deterministic plan: exposure card, matching actions and swaps, with a decision trace."""
     category, concern = classify(snapshot.us_aqi)
     situation = Situation(
         profile=profile,
@@ -159,15 +190,6 @@ def generate_policy(snapshot: Snapshot, profile: Profile) -> PolicyResult:
     selected = [exposure, *(rule for rule in ACTION_RULES if rule.applies(situation))]
     swaps = [rule.advice for rule in SWAP_RULES if rule.applies(situation)] or [catalog.UNIVERSAL_SWAP]
     minimum, shift = find_lower_hour(snapshot, profile)
-
-    trace = [catalog.TRACE_SOURCE]
-    trace += [rule.trace.format(aqi=snapshot.us_aqi) for rule in selected if rule.trace]
-    if minimum and minimum.us_aqi is not None:
-        trace.append(catalog.TRACE_LOWEST_HOUR.format(aqi=minimum.us_aqi, time=minimum.time))
-    if shift:
-        trace.append(catalog.TRACE_SHIFT)
-    trace.append(catalog.TRACE_SWAPS)
-
     return PolicyResult(
         category=category,
         concern=concern,
@@ -178,6 +200,6 @@ def generate_policy(snapshot: Snapshot, profile: Profile) -> PolicyResult:
         best_window=minimum,
         lowest_aqi=minimum.us_aqi if minimum else None,
         shift=shift,
-        trace=trace,
+        trace=decision_trace(snapshot, selected, minimum, shift),
         disclaimer=catalog.DISCLAIMER,
     )

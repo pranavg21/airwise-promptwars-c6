@@ -12,7 +12,10 @@ EXPECTED = {
     "family": (["outdoor", "home", "commute"], ["trip-swap", "combustion-swap"]),
     "commuter": (["outdoor", "home", "commute"], ["trip-swap", "combustion-swap"]),
     "outdoor": (["outdoor", "home", "commute", "worker"], ["trip-swap", "combustion-swap"]),
-    "community": (["outdoor", "home", "commute", "community"], ["trip-swap", "combustion-swap", "shared-swap"]),
+    "community": (
+        ["outdoor", "home", "commute", "community"],
+        ["trip-swap", "combustion-swap", "shared-swap"],
+    ),
 }
 
 

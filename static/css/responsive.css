@@ -1,0 +1,231 @@
+/* Narrow screens, reduced motion and print. Loaded last so these rules win. */
+@media (max-width: 1190px) {
+  .shell {
+    grid-template-columns: 280px 1fr;
+  }
+  .sidebar {
+    padding: 30px 18px;
+  }
+  .content {
+    padding: 30px 25px;
+  }
+  .hero {
+    grid-template-columns: 1fr;
+  }
+  .hero-copy {
+    padding: 8px 0;
+  }
+  .hero h1 {
+    font-size: 50px;
+  }
+  .aqi-panel {
+    min-height: 250px;
+  }
+  .aqi-reading > span:first-child {
+    font-size: 95px;
+  }
+  .analysis-grid,
+  .ai-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .bottom-actions {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 830px) {
+  .edition-hide {
+    display: none;
+  }
+  .masthead {
+    padding: 0 18px;
+    gap: 10px;
+  }
+  .brand-sep,
+  .edition {
+    display: none;
+  }
+  .shell {
+    display: block;
+  }
+  .sidebar {
+    padding: 23px 21px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .side-heading {
+    margin-bottom: 15px;
+  }
+  .sidebar form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 18px;
+  }
+  .side-section {
+    padding: 15px 0;
+  }
+  .sidebar .primary-button,
+  .sidebar .side-note {
+    grid-column: 1/-1;
+  }
+  .content {
+    padding: 23px 21px;
+  }
+  .analysis-grid,
+  .ai-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 620px) {
+  .masthead {
+    height: 64px;
+  }
+  .brand {
+    font-size: 24px;
+  }
+  .brand-symbol {
+    width: 32px;
+    height: 32px;
+  }
+  .signal {
+    font-size: 0;
+  }
+  .signal-dot {
+    width: 8px;
+    height: 8px;
+  }
+  .mast-right {
+    gap: 10px;
+  }
+  .text-button {
+    font-size: 11px;
+  }
+  .sidebar form {
+    display: block;
+  }
+  .hero h1 {
+    font-size: 44px;
+    letter-spacing: -2.4px;
+  }
+  .hero-tags {
+    gap: 5px;
+  }
+  .hero-tags span {
+    font-size: 9px;
+  }
+  .aqi-panel {
+    min-height: 255px;
+  }
+  .metric-grid {
+    gap: 7px;
+  }
+  .metric {
+    padding: 13px 10px;
+  }
+  .metric-heading {
+    font-size: 8px;
+    letter-spacing: 0.2px;
+  }
+  .metric-value > span {
+    font-size: 26px;
+  }
+  .metric-value small {
+    font-size: 9px;
+  }
+  .metric-foot {
+    font-size: 9px;
+  }
+  .analysis-grid,
+  .ai-grid,
+  .recommendations {
+    grid-template-columns: 1fr;
+  }
+  .surface {
+    padding: 19px;
+  }
+  .bottom-actions {
+    padding: 24px 20px;
+  }
+  .footer {
+    flex-wrap: wrap;
+  }
+  .edition {
+    display: none;
+  }
+  .method-footer {
+    display: block;
+  }
+  .method-footer span {
+    display: block;
+    margin-bottom: 7px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *:before,
+  *:after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media print {
+  .masthead,
+  .sidebar,
+  .skip-link,
+  .hero-tags,
+  .search-wrap,
+  .bottom-buttons,
+  .ask-card,
+  .methodology .data-chip,
+  .ai-transparency {
+    display: none !important;
+  }
+  .shell {
+    display: block;
+  }
+  .content {
+    padding: 0;
+  }
+  .hero {
+    grid-template-columns: 1fr 1fr;
+  }
+  .hero h1 {
+    font-size: 30px;
+  }
+  .aqi-panel {
+    min-height: 200px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .surface,
+  .metric,
+  .advice-card {
+    break-inside: avoid;
+  }
+  .bottom-actions {
+    background: #fff;
+    color: #111;
+    border: 1px solid #777;
+    print-color-adjust: exact;
+  }
+  .section-heading {
+    margin: 20px 0 10px;
+  }
+  .metric-value > span {
+    font-size: 29px;
+  }
+}
+
+@media (max-width: 620px) {
+  .swaps {
+    grid-template-columns: 1fr;
+  }
+  .mast-right {
+    gap: 5px;
+  }
+  .mast-right .text-button {
+    font-size: 10px;
+  }
+}

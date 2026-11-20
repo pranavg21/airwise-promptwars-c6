@@ -1,7 +1,18 @@
 """Realistic but clearly synthetic CAMS-shaped fixtures for deterministic testing."""
+
 import pytest
+
+from airwise import ai, data
 from airwise.data import parse_air
 from airwise.models import Location
+
+
+@pytest.fixture(autouse=True)
+def isolated_caches():
+    """Every test starts without cached forecasts, places or AI replies."""
+    for cache in (ai.response_cache, data.air_cache, data.geo_cache):
+        cache.clear()
+    yield
 
 
 @pytest.fixture
@@ -19,9 +30,16 @@ def payload():
     aqi[15] = 110
     pm[15] = 46
     return {
-        "timezone":"Asia/Kolkata",
-        "current":{"time":"2026-11-17T06:00", "us_aqi":182, "pm2_5":90, "pm10":140, "ozone":32, "nitrogen_dioxide":18},
-        "hourly":{"time":hours, "us_aqi":aqi, "pm2_5":pm, "pm10":[140.0]*72}
+        "timezone": "Asia/Kolkata",
+        "current": {
+            "time": "2026-11-17T06:00",
+            "us_aqi": 182,
+            "pm2_5": 90,
+            "pm10": 140,
+            "ozone": 32,
+            "nitrogen_dioxide": 18,
+        },
+        "hourly": {"time": hours, "us_aqi": aqi, "pm2_5": pm, "pm10": [140.0] * 72},
     }
 
 

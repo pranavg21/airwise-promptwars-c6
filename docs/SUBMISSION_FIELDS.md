@@ -11,16 +11,16 @@
 ---
 
 ### Describe the changes/updates made in the deployed version (max 1,024 characters)
-*Character count: 885 characters*
+*Character count: 909 characters*
 
-AirWise is a source-grounded Urban Air Quality Assistant built for families, commuters, outdoor workers and communities. It integrates Open-Meteo/CAMS modeled AQI and particulate data, city search, a 24-hour forecast chart, evidence-backed protection routines, indoor-source controls and sustainable low-emission swaps. The rules engine adapts to children, older adults, respiratory sensitivity, schedule, budget and daily priorities, with auditable reasons for every suggestion. A forecast comparison explicitly distinguishes modeled PM2.5 differences from personal health benefit. Optional server-side Gemini generates personalized daily briefs and responds to live questions. The application includes accessible charts/tables, shareable community summaries, print support, secure input validation, CI and automated testing, and clear attribution of US AQI versus India's CPCB scale.
+AirWise helps families, commuters, outdoor workers and neighbourhood groups plan around winter smog with Open-Meteo/CAMS modeled air data, labelled as US AQI rather than India's CPCB index. Ordered rules choose routines, indoor actions and low-emission swaps, each with its direct mechanism, and compare the whole planned activity across start times. This version restructures the code into single-purpose modules: one AQI definition, rules separated from recommendation text, central configuration, and a split browser codebase checked by ruff, mypy strict, ESLint and Prettier in CI. Gemini calls now have a 22-second budget, a 15-minute answer cache and an optional fallback model. Security headers, cross-site write blocking and patched framework versions were added. Text contrast and keyboard city search meet WCAG AA, with axe-core scans in CI. 117 Python and 10 browser-module tests run on every push.
 
 ---
 
 ### Mention GenAI services utilized and where you used them (max 1,024 characters)
-*Character count: 914 characters*
+*Character count: 1009 characters*
 
-Google Gemini Developer API (gemini-2.5-flash) is used server-side, only after the user opts in, for a personalized daily air-quality briefing and for follow-up questions. The FastAPI /api/plan and /api/ask endpoints send Gemini a minimized summary of Open-Meteo/CAMS modeled air data, the user's routine preferences and the action cards already selected by deterministic rules. Gemini returns structured JSON that Pydantic validates before the browser renders it as plain text. AQI and PM2.5 values, the timing comparison, safety limits and sustainable swaps come from code, not the model. Generated prose containing digits or percentage claims is rejected, and exact readings are shown separately with their source and time. If Gemini is unavailable, rate-limited or returns invalid output, the app says so and the rule-based plan still works. The API key is held in Secret Manager and never sent to the browser.
+Google Gemini Developer API (gemini-2.5-flash) is used server-side, only after the user opts in, for a personalized daily air-quality briefing and for follow-up questions. The FastAPI /api/plan and /api/ask endpoints send Gemini a minimized summary of Open-Meteo/CAMS modeled air data, the user's routine preferences and the action cards already selected by deterministic rules. Pydantic validates Gemini's structured JSON before the browser renders it as plain text. AQI and PM2.5 values, the timing comparison, safety limits and sustainable swaps come from code, not the model. Generated prose containing digits or percentage claims is rejected, and exact readings are shown separately with their source and time. If Gemini is unavailable, rate-limited or returns invalid output, the app says so and the rule-based plan still works. Identical requests reuse a validated answer for 15 minutes, and an optional fallback model is tried if the first fails. The key stays in Secret Manager, never in the browser.
 
 ---
 

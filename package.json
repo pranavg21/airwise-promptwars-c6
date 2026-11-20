@@ -1,0 +1,21 @@
+{
+  "name": "airwise-frontend",
+  "private": true,
+  "description": "Quality tooling for the AirWise browser code. The app itself has no build step or runtime npm dependencies.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write static tests/js eslint.config.js package.json .prettierrc.json",
+    "format:check": "prettier --check static tests/js eslint.config.js package.json .prettierrc.json",
+    "test": "node --test \"tests/js/*.test.js\""
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.14.0",
+    "globals": "17.14.0",
+    "prettier": "3.9.10"
+  },
+  "overrides": {
+    "minimatch": "11.0.5"
+  }
+}

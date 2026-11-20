@@ -3,6 +3,7 @@
 Run from the project root: python -m scripts.browser_check
 Requires Playwright and Chromium. Set CHROMIUM_PATH to use a system browser.
 """
+
 import asyncio
 import os
 import socket
@@ -20,8 +21,11 @@ async def synthetic_air(location):
         raise ProviderError("Simulated provider outage")
     value = 180 if location.name == "Pune" else 84
     hours = [f"2026-11-19T{hour:02}:00" for hour in range(24)]
-    raw = {"timezone": "Asia/Kolkata", "current": {"time": hours[6], "us_aqi": value},
-           "hourly": {"time": hours, "us_aqi": [value]*24, "pm2_5": list(range(24, 0, -1))}}
+    raw = {
+        "timezone": "Asia/Kolkata",
+        "current": {"time": hours[6], "us_aqi": value},
+        "hourly": {"time": hours, "us_aqi": [value] * 24, "pm2_5": list(range(24, 0, -1))},
+    }
     return parse_air(raw, location)
 
 

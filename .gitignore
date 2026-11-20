@@ -12,3 +12,6 @@ htmlcov/
 *.log
 .idea/
 .vscode/
+node_modules/
+.ruff_cache/
+.mypy_cache/

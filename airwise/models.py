@@ -1,10 +1,20 @@
 """Validated boundaries for every externally supplied value."""
+
 from __future__ import annotations
 
 from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from .aqi import Concern, band
+
+Priority = Literal["school", "commute", "exercise", "home", "community"]
+STEP_MIN_CHARS = 4
+STEP_MAX_CHARS = 300
+
+
+def default_priorities() -> list[Priority]:
+    return ["commute", "home"]
 
 
 class StrictModel(BaseModel):
@@ -27,10 +37,9 @@ class Profile(StrictModel):
     outdoor_minutes: int = Field(default=45, ge=0, le=480)
     start_hour: int = Field(default=8, ge=0, le=23)
     budget: Literal["none", "low", "flexible"] = "low"
-    priorities: list[Literal["school", "commute", "exercise", "home", "community"]] = Field(
-        default_factory=lambda: ["commute", "home"], max_length=5
-    )
+    priorities: list[Priority] = Field(default_factory=default_priorities, max_length=5)
     language: Literal["en", "hi"] = "en"
+
     @field_validator("priorities")
     @classmethod
     def no_duplicates(cls, v: list[str]) -> list[str]:
@@ -125,9 +134,10 @@ class AiResponse(StrictModel):
     summary: str = Field(min_length=5, max_length=900)
     steps: list[str] = Field(min_length=2, max_length=5)
     rationale: str = Field(min_length=5, max_length=900)
+
     @field_validator("steps")
     @classmethod
     def short_steps(cls, v: list[str]) -> list[str]:
-        if any(len(s) > 300 or len(s) < 4 for s in v):
+        if any(not STEP_MIN_CHARS <= len(s) <= STEP_MAX_CHARS for s in v):
             raise ValueError("Steps must be concise")
         return v

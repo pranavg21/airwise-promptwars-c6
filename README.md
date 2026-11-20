@@ -16,15 +16,15 @@ AirWise is not another generic chatbot or a map that paints arbitrary numbers. I
 | Judge-relevant requirement | What actually works | Proof in repo |
 |---|---|---|
 | Location-aware advice | Search cities or select Delhi, Mumbai, Pune, Bengaluru; validated WGS84 coordinates | `airwise/data.py`, `airwise/models.py`, `tests/test_data.py` |
-| Current urban pollution | Current **modeled** US AQI, PM2.5, PM10 from Open-Meteo/CAMS | `airwise/data.py`, `static/js/app.js` |
+| Current urban pollution | Current **modeled** US AQI, PM2.5, PM10 from Open-Meteo/CAMS; one US AQI category definition shared by the API and the dashboard | `airwise/data.py`, `airwise/aqi.py`, `static/js/readings.js`, `tests/test_aqi.py` |
 | 24-hour decision support | Modeled hourly AQI plot, accessible hourly table and lowest forecast hour | `airwise/policy.py`, `static/js/chart.js`, `tests/test_policy.py` |
-| Personalized family guidance | Child, older-adult, respiratory-sensitivity, daily priorities and budget | `airwise/policy.py`, `tests/test_policy.py` |
-| Low-emission daily routines | Context-aware trip reduction, less idling, school-run alternatives and collective actions | `PolicyResult.swaps` in `airwise/policy.py` |
-| Indoor air improvements | Combustion-source reduction, caution around ventilation, optional filtration | `airwise/policy.py` |
+| Personalized family guidance | Child, older-adult, respiratory-sensitivity, daily priorities and budget | Rules in `airwise/policy.py`, text in `airwise/catalog.py`, `tests/test_policy_rules.py` |
+| Low-emission daily routines | Context-aware trip reduction, less idling, school-run alternatives and collective actions | `SWAP_RULES` in `airwise/policy.py`, swaps in `airwise/catalog.py` |
+| Indoor air improvements | Combustion-source reduction, caution around ventilation, optional filtration | `HOME`, `BUDGET` and `COMBUSTION_SWAP` in `airwise/catalog.py` |
 | Direct impacts explained | Every protective and emissions-reducing suggestion includes the mechanism, reference and relevant limitation | `Advice.why`, `Advice.reference` |
 | Actual generative AI | Gemini structured JSON for opt-in personalized daily brief and live follow-up questions | `airwise/ai.py`, `/api/plan`, `/api/ask` |
-| Responsible failure behavior | No fabricated AQI during outage, no fake AI results when API key is absent, clear status | `tests/test_api.py`, `tests/test_ai.py` |
-| Community use | Copyable source-attributed public bulletin that excludes household medical preferences, printable action plan | `static/js/app.js`, print CSS |
+| Responsible failure behavior | No fabricated AQI during outage, no fake AI results when the key is absent or the quota is used up, clear status | `tests/test_api.py`, `tests/test_ask.py`, `tests/test_ai_resilience.py` |
+| Community use | Copyable source-attributed public bulletin that excludes household medical preferences, printable action plan | `static/js/brief.js`, `tests/js/pure-modules.test.js`, print rules in `static/css/responsive.css` |
 | Transparency | Source, data timestamp, indexing standard, limitations, traceable policy reasons | App methodology section and `docs/ARCHITECTURE.md` |
 
 ### Four personas are not interchangeable
@@ -50,7 +50,7 @@ flowchart LR
     Cache --> Rules[Deterministic rule engine]
     Rules --> Reasons[Personalized actions / reasons / low-emission swaps]
     Rules --> Time[24-hour lower-hour comparison]
-    Rules -->|Only on opt-in| Gemini[Gemini server-side REST]
+    Rules -->|Only on opt-in| Gemini[Gemini server-side REST, 22 s budget, 15-min answer cache]
     Gemini --> Schema[Strict validated JSON output]
     Schema --> Browser
     Reasons --> Browser
@@ -67,7 +67,7 @@ Detailed architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Threat mode
 
 ## 3. Run locally
 
-**Requirements:** Python 3.12+, Git, an optional Gemini Developer API key for real GenAI. No npm dependencies, database or frontend build process.
+**Requirements:** Python 3.12+, Git, an optional Gemini Developer API key for real GenAI. The app has no database, frontend build step or runtime npm dependency; Node.js 22 is used only for the browser-code lint, format and unit-test tooling.
 
 ```bash
 git clone https://github.com/pranavg21/airwise-promptwars-c6.git
@@ -90,23 +90,62 @@ uvicorn airwise.main:app --reload
 
 On Linux/macOS, use `export GEMINI_API_KEY=...` and `export GEMINI_MODEL=gemini-2.5-flash` before launching. **Never put a key in HTML, browser JavaScript, a committed `.env` or the README.** If no key is configured, the deterministic policy still works, but the app correctly labels the AI feature unavailable instead of fabricating an AI response.
 
+Optionally set `GEMINI_FALLBACK_MODEL` to a second model the project can use; it is tried only when the first model fails, for example after its daily quota is spent. Every setting is read in `airwise/config.py`.
+
 The code default and the deployed model are `gemini-2.5-flash`. The identifier is configurable through `GEMINI_MODEL` because Google retires and reroutes models. Google has published lifecycle changes for the 2.5 family, so check the official [model deprecations page](https://ai.google.dev/gemini-api/docs/deprecations) and confirm structured responses from any replacement model before relying on it. Free-tier Gemini limits apply per Google Cloud project and per model, and daily limits reset at midnight Pacific time; the live limit for a project is shown in Google AI Studio.
 
-## 4. Run the quality gates
+## 4. Code map
+
+| Path | Responsibility |
+|---|---|
+| `airwise/main.py` | HTTP routes and the per-request time budget for AI |
+| `airwise/security.py` | Request guards (size, JSON-only, cross-site writes), security headers, rate limiting |
+| `airwise/config.py` | Environment settings and every operating limit, with units |
+| `airwise/data.py` | Open-Meteo geocoding and air-quality client: fixed hosts, timeouts, validation, caching |
+| `airwise/aqi.py` | US EPA AQI categories, defined once |
+| `airwise/policy.py` | Ordered rules that select recommendations; duration-weighted timing comparison |
+| `airwise/catalog.py` | Recommendation text, sources and decision-trace messages |
+| `airwise/ai.py` | Gemini adapter: minimized context, schema and numeric-claim validation, deadline, answer cache, fallback model, failure diagnostics |
+| `airwise/models.py` | Pydantic contracts for every request, forecast and response |
+| `static/js/` | One module per job: `app.js` wiring, `city-search.js`, `readings.js`, `plan.js`, `plan-view.js`, `chart.js`, `brief.js`, `forecast.js`, `transport.js` |
+| `static/css/` | Seven stylesheets in cascade order, from `base.css` tokens to `responsive.css` |
+
+## 5. Run the quality gates
 
 ```bash
-python -m compileall -q airwise
-python -m pytest -q --cov=airwise --cov-branch --cov-report=term-missing --cov-fail-under=80
+pip install -r requirements-dev.txt
+ruff check . && ruff format --check . && mypy
+python -m pytest -q --cov=airwise --cov-branch --cov-fail-under=90
+pip-audit -r requirements.txt
 python scripts/audit_repo.py
+npm ci && npm run lint && npm run format:check && npm test && npm audit
+pip install playwright==1.62.0 axe-playwright-python==0.1.8 && python -m playwright install chromium
+python -m scripts.browser_check && python -m scripts.a11y_check
 ```
 
-**Verification:** every push to `main` runs the [AirWise Quality Gate](https://github.com/pranavg21/airwise-promptwars-c6/actions) on Ubuntu with Python 3.12: compilation, the full pytest suite with branch coverage (80% minimum), the repository audit, and a desktop and mobile Chromium walkthrough. Automated tests replace Open-Meteo and Gemini with controlled fakes, so they make no live provider calls. See [the verification record](docs/VERIFICATION.md) for what is covered, what was checked live, and what remains manual.
+**Verification:** every push to `main` runs the [AirWise Quality Gate](https://github.com/pranavg21/airwise-promptwars-c6/actions) with three jobs. The Python job runs ruff (including a complexity limit of 10 per function), the formatter check, `mypy --strict`, the pytest suite with branch coverage (90% minimum), `pip-audit`, the repository audit and a single-branch check. The frontend job runs ESLint (complexity, function and file size limits), Prettier, Node unit tests and `npm audit`. The browser job runs desktop and mobile Chromium walkthroughs and axe-core scans with a keyboard walkthrough. Automated tests replace Open-Meteo and Gemini with controlled fakes, so they make no live provider calls. See [the verification record](docs/VERIFICATION.md) for what is covered, what was checked live, and what remains manual.
 
-There is no client-side use of `innerHTML` to display API or GenAI strings; the UI creates text nodes. We test validation, rate limits, modeled data parsing, sensitive profiles, unavailable sources, opt-in behavior, malformed or truncated AI output, an upstream Gemini quota rejection on both AI routes, the AQI category boundaries and sustainable-swap explanations.
+There is no client-side use of `innerHTML` to display API or GenAI strings; the UI creates text nodes.
 
-See [docs/VERIFICATION.md](docs/VERIFICATION.md) for an adversarial go/no-go checklist.
+## 6. Evaluation criteria and where to check them
 
-## 5. Deploy as one reproducible service
+| Criterion | Evidence in this repository |
+|---|---|
+| Code quality | Single-purpose modules (see the code map); rules separated from recommendation text; one AQI definition; `ruff` with complexity limit 10, `mypy --strict` and ESLint complexity and size limits enforced in CI; no inline styles or duplicated thresholds in the browser code |
+| Security | Key only in server environment and Secret Manager; strict Pydantic contracts reject unknown fields; fixed upstream hosts with timeouts and no redirects; CSP without inline script or style, HSTS, COOP, CORP and frame denial on every response (`tests/test_security.py`); cross-site API writes rejected; rate limits with `Retry-After`; Gemini failures logged without key, prompt or reply; `pip-audit` and `npm audit` in CI ([SECURITY.md](SECURITY.md)) |
+| Efficiency | Forecast cached 8 minutes per rounded location; Gemini answers cached 15 minutes per forecast hour, place, profile and question; AI work bounded to 22 seconds so a request never outlives the browser; no framework, build step, web fonts or third-party scripts |
+| Testing | 117 Python tests at about 95% branch coverage, 10 Node tests, desktop and mobile browser journeys, 8 axe scans and a keyboard walkthrough; planted-bug checks are recorded in [docs/VERIFICATION.md](docs/VERIFICATION.md) |
+| Accessibility | Zero axe-core violations across 8 page states at 1366 px and 390 px; WCAG AA text contrast; keyboard city search with visible focus and announced results; skip link, labelled controls, data table for the chart, reduced-motion support (`scripts/a11y_check.py`) |
+| Problem alignment | Families, commuters, outdoor workers and neighbourhood groups get different routines, indoor actions and sustainable swaps, each with its direct mechanism; duration-weighted timing for the planned activity; opt-in Gemini briefing and follow-up questions |
+
+## 7. Google services used
+
+- **Gemini Developer API** (`gemini-2.5-flash`): opt-in briefings and follow-up answers, called only from the server (`airwise/ai.py`).
+- **Cloud Run** (`asia-south1`): serves the API and static frontend from one container, scaling to zero when idle.
+- **Secret Manager:** holds the Gemini key; Cloud Run injects it into the container environment.
+- **Cloud Build:** builds the container from source on `gcloud run deploy --source .`.
+
+## 8. Deploy as one reproducible service
 
 A single Docker service hosts both API and frontend, so no separate frontend deployment or cross-origin API configuration is needed.
 
@@ -143,7 +182,7 @@ docker run -p 8080:8080 -e GEMINI_API_KEY="YOUR_KEY" airwise-c6
 
 You must point external HTTPS traffic to port 8080 and configure real TLS at the host or load balancer. The health endpoint is `/api/health`.
 
-## 6. Challenge-specific submission rules
+## 9. Challenge-specific submission rules
 
 - **Public GitHub link** only; private/restricted links are not evaluated.
 - **Repository below 10 MB** and **exactly one branch** (use `main`). The source itself is tiny; recheck history and `.git` before submission.
@@ -161,21 +200,20 @@ git ls-files | wc -l
 python scripts/audit_repo.py
 ```
 
-**Do not submit this working-directory ZIP directly** as your GitHub URL. Create a public repository, push the project, verify the exact public URL in incognito, deploy and record a fresh video.
-
-## 7. Demo storyboard
+## 10. Demo storyboard
 
 A suggested < 4-minute video that satisfies all published criteria: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
-## 8. Assumptions and honest limitations
+## 11. Assumptions and honest limitations
 
-- For a small hackathon service, per-process rate limiting and in-memory cache are used. Scale-out deployments need a shared quota/rate-limit service and upstream observability.
+- For a small hackathon service, rate limits and the forecast and Gemini answer caches live in each process (at most two Cloud Run instances). Scale-out deployments need a shared rate-limit and cache service.
+- The free Gemini tier allows a small number of requests per day per project and model. When it is used up, the app says so and the rule-based plan keeps working; repeated identical requests reuse the cached answer instead of spending quota.
 - The app has **no login or database**. User preference settings are used for the request and not persisted by application code. Hosting and API providers may independently process service metadata.
 - Google's endpoint may have regional quota, pricing and policy constraints. Real AI generation requires a valid key, network connectivity, availability and user opt-in. The application **does not promise AI works before actual deployment verification**.
 - Street-level routing, official CPCB measured AQI, in-home sensor feedback, actual emissions saved, medical diagnosis and air-cleaner efficacy measurement are **not implemented**. They are not hidden behind marketing terms.
 - Air quality estimates cannot substitute for local official warnings or personal clinical advice.
 
-## 9. Citations, attribution and responsible use
+## 12. Citations, attribution and responsible use
 
 - [Open-Meteo Air Quality API — CAMS attribution, variables, model spatial resolution](https://open-meteo.com/en/docs/air-quality-api)
 - [Open-Meteo Geocoding API — GeoNames-based source](https://open-meteo.com/en/docs/geocoding-api)

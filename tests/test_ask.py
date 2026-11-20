@@ -3,6 +3,7 @@
 Gemini is never called. The real `personalize` adapter runs against an in-process
 mock transport so the HTTP status handling is exercised end to end.
 """
+
 import json
 import os
 import unittest
@@ -14,19 +15,28 @@ from airwise import ai, main
 from airwise.data import ProviderError
 from airwise.models import AiResponse, Hour, Location, Snapshot
 
-QUOTA_BODY = {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED",
-                        "message": "Quota exceeded for metric: generate_requests_per_model_per_day"}}
-ANSWER = {"summary": "Switch off the engine while waiting at the gate.",
-          "steps": ["Coordinate shared pickups with nearby families.", "Wait away from queues of idling vehicles."],
-          "rationale": "Less idling means less exhaust where children gather."}
+QUOTA_BODY = {
+    "error": {
+        "code": 429,
+        "status": "RESOURCE_EXHAUSTED",
+        "message": "Quota exceeded for metric: generate_requests_per_model_per_day",
+    }
+}
+ANSWER = {
+    "summary": "Switch off the engine while waiting at the gate.",
+    "steps": ["Coordinate shared pickups with nearby families.", "Wait away from queues of idling vehicles."],
+    "rationale": "Less idling means less exhaust where children gather.",
+}
 REAL_CLIENT = httpx.AsyncClient
 
 
 def gemini_returning(response: httpx.Response, seen: list[httpx.Request]):
     """Build an AsyncClient factory whose requests are answered in-process."""
+
     def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
         return response
+
     return lambda *args, **kwargs: REAL_CLIENT(transport=httpx.MockTransport(handler))
 
 
@@ -36,15 +46,27 @@ class AskEndpoint(unittest.IsolatedAsyncioTestCase):
         self.addAsyncCleanup(self.client.aclose)
         loc = Location(name="Pune", country="India", latitude=18.52, longitude=73.86)
         hours = [Hour(time=f"2026-11-20T{h:02}:00", us_aqi=120, pm2_5=40) for h in range(8, 12)]
-        self.snapshot = Snapshot(location=loc, model_time="2026-11-20T08:00", retrieved_at="2026-11-20T02:30Z",
-                                 timezone="Asia/Kolkata", us_aqi=120, pm2_5=40, hourly=hours)
-        self.body = {"location": loc.model_dump(), "ai_consent": True,
-                     "question": "How can we reduce idling at school pickup?",
-                     "profile": {"children": True, "budget": "none", "priorities": ["school", "home"]}}
+        self.snapshot = Snapshot(
+            location=loc,
+            model_time="2026-11-20T08:00",
+            retrieved_at="2026-11-20T02:30Z",
+            timezone="Asia/Kolkata",
+            us_aqi=120,
+            pm2_5=40,
+            hourly=hours,
+        )
+        self.body = {
+            "location": loc.model_dump(),
+            "ai_consent": True,
+            "question": "How can we reduce idling at school pickup?",
+            "profile": {"children": True, "budget": "none", "priorities": ["school", "home"]},
+        }
         self.air = AsyncMock(return_value=self.snapshot)
         self.enterContext(patch.object(main, "fetch_air", self.air))
         self.enterContext(patch.object(main, "gate", main.RateGate()))
-        self.enterContext(patch.dict(os.environ, {"GEMINI_API_KEY": "test-only-key", "GEMINI_MODEL": "gemini-2.5-flash"}))
+        self.enterContext(
+            patch.dict(os.environ, {"GEMINI_API_KEY": "test-only-key", "GEMINI_MODEL": "gemini-2.5-flash"})
+        )
 
     async def test_answer_is_returned_with_source_labels(self):
         mock = AsyncMock(return_value=AiResponse(**ANSWER))
@@ -62,7 +84,9 @@ class AskEndpoint(unittest.IsolatedAsyncioTestCase):
     async def test_real_adapter_success_through_endpoint(self):
         seen: list[httpx.Request] = []
         envelope = {"candidates": [{"content": {"parts": [{"text": json.dumps(ANSWER)}]}}]}
-        with patch.object(ai.httpx, "AsyncClient", side_effect=gemini_returning(httpx.Response(200, json=envelope), seen)):
+        with patch.object(
+            ai.httpx, "AsyncClient", side_effect=gemini_returning(httpx.Response(200, json=envelope), seen)
+        ):
             response = await self.client.post("/api/ask", json=self.body)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["ai"]["steps"], ANSWER["steps"])
@@ -73,7 +97,9 @@ class AskEndpoint(unittest.IsolatedAsyncioTestCase):
 
     async def test_upstream_quota_rejection_returns_503_without_leaking_details(self):
         seen: list[httpx.Request] = []
-        with patch.object(ai.httpx, "AsyncClient", side_effect=gemini_returning(httpx.Response(429, json=QUOTA_BODY), seen)):
+        with patch.object(
+            ai.httpx, "AsyncClient", side_effect=gemini_returning(httpx.Response(429, json=QUOTA_BODY), seen)
+        ):
             response = await self.client.post("/api/ask", json=self.body)
         self.assertEqual(response.status_code, 503)
         self.assertIn("temporarily unavailable", response.json()["detail"])
@@ -83,8 +109,12 @@ class AskEndpoint(unittest.IsolatedAsyncioTestCase):
 
     async def test_upstream_quota_rejection_keeps_rule_based_plan(self):
         seen: list[httpx.Request] = []
-        with patch.object(ai.httpx, "AsyncClient", side_effect=gemini_returning(httpx.Response(429, json=QUOTA_BODY), seen)):
-            response = await self.client.post("/api/plan", json={k: v for k, v in self.body.items() if k != "question"})
+        with patch.object(
+            ai.httpx, "AsyncClient", side_effect=gemini_returning(httpx.Response(429, json=QUOTA_BODY), seen)
+        ):
+            response = await self.client.post(
+                "/api/plan", json={k: v for k, v in self.body.items() if k != "question"}
+            )
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["ai_status"], "unavailable")
@@ -93,9 +123,17 @@ class AskEndpoint(unittest.IsolatedAsyncioTestCase):
 
     async def test_truncated_generation_is_unavailable_not_partial(self):
         seen: list[httpx.Request] = []
-        envelope = {"candidates": [{"finishReason": "MAX_TOKENS",
-                                    "content": {"parts": [{"text": '{"summary": "Switch off the eng'}]}}]}
-        with patch.object(ai.httpx, "AsyncClient", side_effect=gemini_returning(httpx.Response(200, json=envelope), seen)):
+        envelope = {
+            "candidates": [
+                {
+                    "finishReason": "MAX_TOKENS",
+                    "content": {"parts": [{"text": '{"summary": "Switch off the eng'}]},
+                }
+            ]
+        }
+        with patch.object(
+            ai.httpx, "AsyncClient", side_effect=gemini_returning(httpx.Response(200, json=envelope), seen)
+        ):
             response = await self.client.post("/api/ask", json=self.body)
         self.assertEqual(response.status_code, 503)
         self.assertNotIn("Switch off", response.text)

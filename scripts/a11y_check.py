@@ -84,16 +84,20 @@ async def keyboard_walkthrough(page: Page, problems: list[str]) -> None:
     await page.keyboard.press("Enter")
     options = page.locator("#cityResults button")
     await expect(options.first).to_be_visible()
-    check(await page.locator("[aria-controls='cityResults'][aria-expanded='true']").count() == 1,
-          "Open suggestions are not exposed with aria-expanded=true")
+    check(
+        await page.locator("[aria-controls='cityResults'][aria-expanded='true']").count() == 1,
+        "Open suggestions are not exposed with aria-expanded=true",
+    )
 
     await page.keyboard.press("ArrowDown")
     check("Pune" in await page.evaluate(focused), "ArrowDown does not move focus to the first suggestion")
     await page.keyboard.press("Escape")
     await expect(page.locator("#cityResults")).to_be_hidden()
     check(await page.evaluate(focused) == "citySearch", "Escape does not return focus to the search field")
-    check(await page.locator("[aria-controls='cityResults'][aria-expanded='true']").count() == 0,
-          "Dismissed suggestions still report aria-expanded=true")
+    check(
+        await page.locator("[aria-controls='cityResults'][aria-expanded='true']").count() == 0,
+        "Dismissed suggestions still report aria-expanded=true",
+    )
 
     await page.keyboard.press("Enter")
     await expect(options.first).to_be_visible()
@@ -103,8 +107,10 @@ async def keyboard_walkthrough(page: Page, problems: list[str]) -> None:
     await page.keyboard.press("Enter")
     await expect(page.locator("#chosenCity")).to_have_text("Pune, Maharashtra, India")
     await expect(page.locator("#aqiValue")).to_have_text("180")
-    check(await page.evaluate("() => document.activeElement !== document.body"),
-          "Focus is lost to the page body after selecting a suggestion")
+    check(
+        await page.evaluate("() => document.activeElement !== document.body"),
+        "Focus is lost to the page body after selecting a suggestion",
+    )
 
     await tab_until(page, "#persona")
     await tab_until(page, "#generateBtn")
@@ -116,7 +122,7 @@ async def stale_search_dismissal(page: Page, dismiss: str, problems: list[str]) 
     """Dismiss suggestions before the city search responds; the late response must stay silent."""
     started, release, delivered = asyncio.Event(), asyncio.Event(), asyncio.Event()
 
-    async def hold(route) -> None:  # noqa: ANN001
+    async def hold(route) -> None:
         response = await route.fetch()
         started.set()
         await release.wait()
@@ -167,11 +173,15 @@ async def run() -> int:
             async with async_playwright() as pw:
                 browser = await pw.chromium.launch(executable_path=os.getenv("CHROMIUM_PATH"))
                 for width in (1366, 390):
-                    page = await browser.new_page(viewport={"width": width, "height": 860}, reduced_motion="reduce")
+                    page = await browser.new_page(
+                        viewport={"width": width, "height": 860}, reduced_motion="reduce"
+                    )
                     await page.goto(base)
                     await built_plan(page)
                     await scan(page, f"{width}px built plan", results)
-                    await page.evaluate("() => document.querySelectorAll('details').forEach(d => { d.open = true; })")
+                    await page.evaluate(
+                        "() => document.querySelectorAll('details').forEach(d => { d.open = true; })"
+                    )
                     await scan(page, f"{width}px built plan, all disclosures open", results)
 
                     await page.locator("#citySearch").fill("Pune")
@@ -205,8 +215,10 @@ async def run() -> int:
     for problem in problems:
         print(f"FAIL keyboard {problem}")
     if not problems:
-        print("PASS keyboard: search, suggestion navigation, Escape, selection, form continuation"
-              " and dismissal of a pending search")
+        print(
+            "PASS keyboard: search, suggestion navigation, Escape, selection, form continuation"
+            " and dismissal of a pending search"
+        )
     print(f"Gemini mock calls: {gemini.await_count} (no live provider calls)")
     return 1 if failed else 0
 

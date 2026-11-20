@@ -1,0 +1,44 @@
+/* Sustainable swap cards. */
+.swaps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+  margin-bottom: 18px;
+}
+.swap-card {
+  background: #eaf2e4;
+  border: 1px solid #dce8d4;
+  border-radius: 11px;
+  padding: 19px 21px;
+  min-height: 166px;
+}
+.swap-card .swap-label {
+  font-size: 9px;
+  letter-spacing: 1.05px;
+  color: var(--label);
+  font-weight: 850;
+}
+.swap-card h3 {
+  font-size: 16px;
+  letter-spacing: -0.45px;
+  margin: 12px 0 9px;
+}
+.swap-card p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 0;
+}
+.swap-impact {
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid #d7e5cd;
+  font-weight: 650 !important;
+  color: #446e3a !important;
+}
+.swaps .empty-card {
+  padding: 23px;
+  color: var(--muted);
+  min-height: 0;
+  font-size: 12px;
+}

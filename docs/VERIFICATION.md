@@ -4,13 +4,11 @@ This record separates three kinds of evidence: automated tests (controlled fakes
 
 ## Automated (CI)
 
-The [AirWise Quality Gate](https://github.com/pranavg21/airwise-promptwars-c6/actions) runs on every push to `main` (Ubuntu, Python 3.12, pinned dependencies):
+The [AirWise Quality Gate](https://github.com/pranavg21/airwise-promptwars-c6/actions) runs on every push to `main` (Ubuntu, Python 3.12, Node 22, pinned dependencies) in three jobs:
 
-1. `python -m compileall -q airwise`
-2. `python -m pytest -q --cov=airwise --cov-branch --cov-fail-under=80`
-3. `python scripts/audit_repo.py` (size under 10 MB, basic secret scan)
-4. `python -m scripts.browser_check` (Chromium at 1366 px and 390 px)
-5. `python -m scripts.a11y_check` (axe-core 4.12.1 via `axe-playwright-python==0.1.8`, plus a keyboard walkthrough, at 1366 px and 390 px)
+- **Python:** `ruff check .` (pyflakes, bugbear, naming, imports and a McCabe complexity limit of 10), `ruff format --check .`, `mypy --strict` on `airwise/`, pytest with branch coverage (90% minimum), `pip-audit -r requirements.txt`, `scripts/audit_repo.py` (size under 10 MB, secret scan) and a single-branch check.
+- **Frontend:** ESLint (complexity 10, 40 lines per function, 200 lines per file), Prettier `--check`, Node unit tests and `npm audit`.
+- **Browser:** `scripts/browser_check.py` (Chromium at 1366 px and 390 px) and `scripts/a11y_check.py` (axe-core 4.12.1 via `axe-playwright-python==0.1.8`, plus a keyboard walkthrough).
 
 Recorded results:
 
@@ -19,6 +17,8 @@ Recorded results:
 | `a2038ff` ([run 44546257185](https://github.com/pranavg21/airwise-promptwars-c6/actions/runs/44546257185)) | 54 passed, 4 subtests passed, 88.19% branch-inclusive coverage; both browser widths passed |
 | `a417f49`, adds `tests/test_ask.py` ([run 44689312307](https://github.com/pranavg21/airwise-promptwars-c6/actions/runs/44689312307)) | 61 passed, 4 subtests passed, 90.45% branch-inclusive coverage; both browser widths passed |
 | `6462dff`, accessibility fixes ([run 44722062812](https://github.com/pranavg21/airwise-promptwars-c6/actions/runs/44722062812)) | 61 passed, 4 subtests passed, 90.45% coverage; both browser widths passed; `scripts/a11y_check.py` reported zero axe violations in all eight scans (four page states at 1366 px and 390 px) and a passing keyboard walkthrough |
+
+| `7d63f6b` and the quality release that follows it | 117 Python tests and 4 subtests at about 95% branch coverage, 10 Node tests, lint, format, strict types and both audits clean, both browser widths and all eight axe scans passing in local runs; see the CI run for the pushed commit |
 
 What the automated suite covers:
 
@@ -29,8 +29,18 @@ What the automated suite covers:
 - Consent enforcement, AI fallback on `/api/plan`, preferences reaching Gemini only with consent (`tests/test_workflow.py`)
 - `/api/ask` success, forecast outage, missing key, truncated model output, and an upstream HTTP 429 quota rejection on both `/api/ask` and `/api/plan`, using the real Gemini adapter against an in-process mock transport (`tests/test_ask.py`)
 - Structured-output validation and the numeric-claim text guard, including Hindi (`tests/test_ai.py`, `tests/test_windows.py`)
+- Gemini answer reuse within 15 minutes, failures never cached, a 22-second deadline, the optional fallback model, and failure logs that name the reason and status without the key, question or reply (`tests/test_ai_resilience.py`)
+- Security headers on pages, API and static files; cross-site API writes rejected; malformed `Content-Length`; `Retry-After` on rate limits (`tests/test_security.py`)
+- Browser modules without DOM side effects: number and time formatting, forecast window and lowest hour, place labels, and a community brief that never carries household health choices (`tests/js/pure-modules.test.js`)
 - Browser: city selection, profile change clearing the plan, a delayed plan response arriving after a city change, a provider outage, and horizontal overflow at 390 px (`scripts/browser_check.py`, synthetic air data, no Gemini)
 - Accessibility, in the mocked CI walkthrough: zero axe violations for a built plan, the same plan with every disclosure open, open city suggestions, and an AI briefing and answer rendered from mocked Gemini responses, each at 1366 px and 390 px; a keyboard user can reach city search with a visible focus indicator, open and move through suggestions, dismiss them with Escape, select Pune, and continue to build a plan; a city search dismissed by Escape or by a click outside before it responds stays closed and silent (`scripts/a11y_check.py`)
+
+### Checks run locally for the quality release (not in CI)
+
+- **Policy equivalence:** the rule engine's output was hashed for 43,008 combinations of persona, household flags, budget, all 32 priority sets, seven AQI levels and forecasts with and without a timing shift. The refactored engine matches the submitted version (`c2c2580`) on every one.
+- **Visual equivalence:** full-page screenshots of five states (initial, expanded plan, open suggestions, mocked AI answer, provider outage) at 1366 px and 390 px were pixel-identical before and after the JavaScript module split, the CSS split and formatting.
+- **Planted bugs:** each of these changes made the tests fail: moving the Good/Moderate AQI boundary from 50 to 51; raising the 5% timing threshold; changing the duration weighting; dropping the digit check from the AI text guard; and changing the browser's lowest-hour tie-break.
+- **Dependency audits:** `pip-audit` found five Starlette advisories in the previously pinned FastAPI 0.128.2 dependency tree; upgrading to FastAPI 0.162.0 with Starlette 1.9.0 cleared them. `npm audit` is clean after pinning `minimatch` 11.0.5.
 
 What it does not cover:
 

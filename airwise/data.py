@@ -1,56 +1,40 @@
-"""Bounded, cached, server-side external data retrieval (no user-defined URLs)."""
+"""Bounded, cached, server-side retrieval of Open-Meteo geocoding and air-quality data.
+
+Callers never supply a URL: only the two constants below can be fetched.
+"""
+
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, timezone
 import math
-import time
+from datetime import UTC, datetime
 from typing import Any
 
+import httpx
 from pydantic import ValidationError
 
-import httpx
-
+from . import config
+from .cache import TTLCache
 from .models import Hour, Location, Snapshot
+
+__all__ = ["ProviderError", "TTLCache", "fetch_air", "fetch_json", "finite", "parse_air", "search_locations"]
 
 GEO_URL = "https://geocoding-api.open-meteo.com/v1/search"
 AIR_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+ALLOWED_URLS = frozenset({GEO_URL, AIR_URL})
+USER_AGENT = "AirWise-PromptWars/1.0"
+
 
 class ProviderError(Exception):
     """External dataset is unavailable or malformed; do not fabricate values."""
 
 
-class TTLCache:
-    def __init__(self, ttl: int, limit: int = 128) -> None:
-        self.ttl = ttl
-        self.limit = limit
-        self._items: dict[str, tuple[float, Any]] = {}
-        self._lock = asyncio.Lock()
-
-    async def get(self, key: str) -> Any | None:
-        async with self._lock:
-            value = self._items.get(key)
-            if value is None:
-                return None
-            if value[0] < time.monotonic():
-                del self._items[key]
-                return None
-            return value[1]
-
-    async def put(self, key: str, value: Any) -> None:
-        async with self._lock:
-            if len(self._items) >= self.limit:
-                oldest = min(self._items, key=lambda k: self._items[k][0])
-                del self._items[oldest]
-            self._items[key] = (time.monotonic() + self.ttl, value)
-
-
-geo_cache = TTLCache(ttl=24 * 3600)
-air_cache = TTLCache(ttl=8 * 60)
+geo_cache: TTLCache[list[Location]] = TTLCache(config.GEO_CACHE_TTL_S, config.CACHE_MAX_ENTRIES)
+air_cache: TTLCache[Snapshot] = TTLCache(config.AIR_CACHE_TTL_S, config.CACHE_MAX_ENTRIES)
 
 
 def finite(value: Any) -> float | None:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+    """A non-negative finite number, or None for anything else (including booleans)."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
         return None
     result = float(value)
     if not math.isfinite(result) or result < 0:
@@ -59,24 +43,36 @@ def finite(value: Any) -> float | None:
 
 
 async def fetch_json(url: str, params: dict[str, Any]) -> dict[str, Any]:
-    # SSRF prevention: caller may never pass a URL; URL is one of two constants.
-    if url not in {GEO_URL, AIR_URL}:
+    if url not in ALLOWED_URLS:
         raise ProviderError("Unexpected upstream host")
+    timeout = httpx.Timeout(config.FORECAST_READ_TIMEOUT_S, connect=config.FORECAST_CONNECT_TIMEOUT_S)
     try:
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(8.0, connect=3.0), follow_redirects=False,
-            headers={"User-Agent": "AirWise-PromptWars/1.0"}
+            timeout=timeout, follow_redirects=False, headers={"User-Agent": USER_AGENT}
         ) as client:
             response = await client.get(url, params=params)
             response.raise_for_status()
-            if len(response.content) > 500_000:
+            if len(response.content) > config.MAX_FORECAST_BYTES:
                 raise ProviderError("Upstream payload exceeded allowed size")
             payload = response.json()
-            if not isinstance(payload, dict) or payload.get("error"):
-                raise ProviderError("Upstream declined request")
-            return payload
     except (httpx.HTTPError, ValueError) as exc:
         raise ProviderError("Air data provider could not be reached") from exc
+    if not isinstance(payload, dict) or payload.get("error"):
+        raise ProviderError("Upstream declined request")
+    return payload
+
+
+def _location(city: dict[str, Any]) -> Location | None:
+    try:
+        return Location(
+            name=city["name"],
+            latitude=city["latitude"],
+            longitude=city["longitude"],
+            country=city.get("country", ""),
+            region=city.get("admin1", ""),
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 async def search_locations(query: str) -> list[Location]:
@@ -84,73 +80,96 @@ async def search_locations(query: str) -> list[Location]:
     cached = await geo_cache.get(key)
     if cached is not None:
         return cached
-    raw = await fetch_json(GEO_URL, {"name": query, "count": 6, "language": "en", "format": "json"})
-    items = []
+    raw = await fetch_json(
+        GEO_URL, {"name": query, "count": config.GEOCODING_RESULTS, "language": "en", "format": "json"}
+    )
     results = raw.get("results") or []
     if not isinstance(results, list):
         raise ProviderError("Geocoding provider returned malformed results")
-    for city in results[:6]:
-        try:
-            items.append(Location(
-                name=city["name"], latitude=city["latitude"],
-                longitude=city["longitude"], country=city.get("country", ""),
-                region=city.get("admin1", "")
-            ))
-        except (KeyError, TypeError, ValueError):
+    locations = [loc for loc in map(_location, results[: config.GEOCODING_RESULTS]) if loc is not None]
+    await geo_cache.put(key, locations)
+    return locations
+
+
+def _value_at(hourly: dict[str, Any], key: str, index: int) -> float | None:
+    values = hourly.get(key)
+    return finite(values[index]) if isinstance(values, list) and index < len(values) else None
+
+
+def _hourly_points(hourly: dict[str, Any]) -> list[Hour]:
+    """Hourly forecast points; missing upstream values stay missing, never imputed."""
+    times = hourly.get("time")
+    if not isinstance(times, list) or not times:
+        raise ProviderError("Hourly forecast unavailable")
+    points = []
+    for index, when in enumerate(times[: config.MAX_FORECAST_HOURS]):
+        if not isinstance(when, str):
             continue
-    await geo_cache.put(key, items)
-    return items
+        try:
+            points.append(
+                Hour(
+                    time=when,
+                    us_aqi=_value_at(hourly, "us_aqi", index),
+                    pm2_5=_value_at(hourly, "pm2_5", index),
+                    pm10=_value_at(hourly, "pm10", index),
+                )
+            )
+        except ValueError:
+            continue
+    return points
 
 
 def parse_air(raw: dict[str, Any], location: Location) -> Snapshot:
-    """Never use imputed or synthetic values when upstream values are absent."""
-    current = raw.get("current")
-    hourly = raw.get("hourly")
+    """Validated snapshot of current values and the hourly forecast."""
+    current, hourly = raw.get("current"), raw.get("hourly")
     if not isinstance(current, dict) or not isinstance(hourly, dict):
         raise ProviderError("Current air readings or hourly forecast missing")
-    times = hourly.get("time")
-    if not isinstance(times, list) or len(times) == 0:
-        raise ProviderError("Hourly forecast unavailable")
     model_time = current.get("time")
     if not isinstance(model_time, str):
         raise ProviderError("Current data timestamp missing")
-    points: list[Hour] = []
-    for idx, when in enumerate(times[:72]):
-        if not isinstance(when, str):
-            continue
-        def at(key: str) -> float | None:
-            values = hourly.get(key)
-            return finite(values[idx]) if isinstance(values, list) and idx < len(values) else None
-        try:
-            points.append(Hour(time=when, us_aqi=at("us_aqi"), pm2_5=at("pm2_5"), pm10=at("pm10")))
-        except ValueError:
-            continue
-    if finite(current.get("us_aqi")) is None and not any(p.us_aqi is not None for p in points):
+    points = _hourly_points(hourly)
+    if finite(current.get("us_aqi")) is None and all(p.us_aqi is None for p in points):
         raise ProviderError("No AQI predictions in upstream response")
     try:
         return Snapshot(
-        location=location, retrieved_at=datetime.now(timezone.utc).isoformat(),
-        model_time=model_time, timezone=str(raw.get("timezone", "Unknown"))[:60],
-        us_aqi=finite(current.get("us_aqi")), pm2_5=finite(current.get("pm2_5")),
-        pm10=finite(current.get("pm10")), ozone=finite(current.get("ozone")),
-        nitrogen_dioxide=finite(current.get("nitrogen_dioxide")), hourly=points
+            location=location,
+            retrieved_at=datetime.now(UTC).isoformat(),
+            model_time=model_time,
+            timezone=str(raw.get("timezone", "Unknown"))[:60],
+            us_aqi=finite(current.get("us_aqi")),
+            pm2_5=finite(current.get("pm2_5")),
+            pm10=finite(current.get("pm10")),
+            ozone=finite(current.get("ozone")),
+            nitrogen_dioxide=finite(current.get("nitrogen_dioxide")),
+            hourly=points,
         )
     except ValidationError as exc:
         raise ProviderError("Upstream air values are outside validated bounds") from exc
 
 
+def location_key(location: Location) -> str:
+    """Rounded coordinates, so nearby requests share one upstream call."""
+    places = config.LOCATION_CACHE_DECIMALS
+    return f"{location.latitude:.{places}f}:{location.longitude:.{places}f}"
+
+
 async def fetch_air(location: Location) -> Snapshot:
-    # Rounded location keys avoid redundant full-precision calls; cache is ephemeral.
-    key = f"{location.latitude:.3f}:{location.longitude:.3f}"
+    key = location_key(location)
     cached = await air_cache.get(key)
     if cached is not None:
         return cached.model_copy(update={"location": location})
-    raw = await fetch_json(AIR_URL, {
-        "latitude": round(location.latitude, 5), "longitude": round(location.longitude, 5),
-        "current": "us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide",
-        "hourly": "us_aqi,pm2_5,pm10",
-        "timezone": "auto", "forecast_days": 3
-    })
+    places = config.UPSTREAM_COORDINATE_DECIMALS
+    raw = await fetch_json(
+        AIR_URL,
+        {
+            "latitude": round(location.latitude, places),
+            "longitude": round(location.longitude, places),
+            "current": "us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide",
+            "hourly": "us_aqi,pm2_5,pm10",
+            "timezone": "auto",
+            "forecast_days": config.FORECAST_DAYS,
+        },
+    )
     snapshot = parse_air(raw, location)
     await air_cache.put(key, snapshot)
     return snapshot

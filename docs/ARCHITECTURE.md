@@ -68,7 +68,16 @@ Actions for vulnerable residents are more precautionary but avoid replacing pers
 
 If Gemini is missing, times out, returns bad JSON or fails validation, API returns `ai=null` with `ai_status=unavailable`; it **does not impersonate successful generation**. Users can still act on the rules. `/api/ask` refuses requests without opt-in or when a key is unavailable.
 
-The service uses short timeouts, limited request sizes, bounded cache entries, a short in-memory rate limit and static host allowlisting for upstream queries. For horizontally scaled production, replace process-local throttling with edge/WAF and centralized quotas before opening to high public traffic.
+### Request lifecycle for an AI-backed request
+
+1. `security.reject_unsafe_request` rejects oversized, non-JSON or cross-site writes before routing.
+2. The route applies its rate limit, then fetches (or reuses) the forecast; a provider failure is a 503 with no invented values.
+3. `generate_policy` builds the deterministic plan. It never depends on Gemini.
+4. The route gives Gemini only the time left in a 22-second budget (`config.REQUEST_BUDGET_S`), so the request finishes before the browser's 25-second abort. With less than 3 seconds left, AI is skipped and reported unavailable.
+5. `ai.personalize` returns a cached validated answer for the same forecast hour, place, profile and question, or calls the primary model and, if that fails, the optional `GEMINI_FALLBACK_MODEL`.
+6. The reply must parse as JSON, pass the `AiResponse` schema and contain no digits or percentage claims. Any failure is logged as `gemini_unavailable model=… reason=… status=…` (for example `reason=http_status status=429` for an exhausted quota) without the key, prompt or reply, and the user sees a plain unavailable message.
+
+The service uses short timeouts, limited request sizes, bounded caches, a short in-memory rate limit and static host allowlisting for upstream queries. For horizontally scaled production, replace process-local throttling and caches with edge/WAF and centralized quotas before opening to high public traffic.
 
 ## Deployment topology
 
@@ -90,5 +99,8 @@ Single Python process, static assets served from `/static`, API served under `/a
 - Model identifier validation, missing key, malformed/overlong AI output
 - API request-body, unknown-field, coordinate and media-type rejection
 - CSP and security response headers, rate limiting, publicly accessible UI
+- Gemini answer reuse, failures never cached, deadline, fallback model, failure logging without secrets (`tests/test_ai_resilience.py`)
+- HSTS, COOP and CORP headers, cross-site write rejection and `Retry-After` (`tests/test_security.py`)
+- Browser modules without DOM side effects: formatting, forecast selection, community brief (`tests/js/pure-modules.test.js`)
 
 Note: all sample values in automated tests are **synthetic fixtures**, not live pollution readings.

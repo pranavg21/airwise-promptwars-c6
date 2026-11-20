@@ -1,0 +1,164 @@
+/* Outlook chart, hourly table and the timing comparison. */
+.card-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.card-topline h3 {
+  font-size: 18px;
+  letter-spacing: -0.6px;
+  margin: 8px 0 0;
+}
+.data-chip {
+  font-size: 9px;
+  white-space: nowrap;
+  background: #eaf3e3;
+  color: var(--label);
+  letter-spacing: 0.65px;
+  border: 1px solid #dbe9cf;
+  border-radius: 4px;
+  padding: 7px 8px;
+  font-weight: 830;
+}
+.chart-slot {
+  min-height: 202px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 19px;
+}
+.chart-slot svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.chart-label {
+  fill: var(--muted);
+}
+.chart-key {
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.chart-dot {
+  width: 8px;
+  height: 8px;
+  background: #6eaf43;
+  border-radius: 50%;
+}
+.chart-source {
+  margin-left: auto;
+  font-size: 9px;
+}
+.hourly-details {
+  border-top: 1px solid var(--line);
+  margin-top: 17px;
+  padding-top: 13px;
+}
+.hourly-details summary,
+.ai-transparency summary,
+.methodology summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #58704f;
+  font-weight: 750;
+}
+.hourly-details summary span {
+  margin-left: 5px;
+}
+.table-wrap {
+  overflow-x: auto;
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 12px;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+}
+th,
+td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #edf1e9;
+}
+th {
+  color: var(--muted);
+}
+td {
+  color: #3a4e3d;
+}
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.75;
+}
+.shift-card .muted {
+  margin: 20px 0;
+}
+.icon-ring {
+  font-size: 19px;
+  border: 1px solid #e2eada;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: #6fa936;
+}
+.shift-result {
+  min-height: 160px;
+}
+.shift-val {
+  font-size: 51px;
+  letter-spacing: -2px;
+  font-weight: 830;
+  color: #538d25;
+  line-height: 1.1;
+}
+.shift-val.compact {
+  font-size: 28px;
+}
+.shift-val span {
+  font-size: 20px;
+}
+.shift-meta {
+  font-size: 12px;
+  color: #657b66;
+  line-height: 1.6;
+  margin: 10px 0;
+}
+.shift-timeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+.shift-timeline span {
+  background: #edf4e7;
+  border: 1px solid #e0ebd5;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.shift-timeline strong {
+  color: #7baa53;
+}
+.limitation-note {
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+  padding-top: 13px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.placeholder {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}

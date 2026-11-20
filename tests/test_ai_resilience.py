@@ -1,0 +1,163 @@
+"""Gemini adapter under failure: deadlines, answer reuse, fallback model and diagnostics.
+
+No live calls: the real adapter talks to an in-process mock transport.
+"""
+
+import asyncio
+import json
+import logging
+import time
+
+import httpx
+import pytest
+
+from airwise import ai, config, main
+from airwise.ai import AiUnavailableError, personalize
+from airwise.models import Profile
+from airwise.policy import generate_policy
+
+REAL_CLIENT = httpx.AsyncClient
+REPLY = {
+    "summary": "Move strenuous play to a cleaner hour.",
+    "steps": ["Switch off the engine while waiting.", "Avoid incense indoors."],
+    "rationale": "These steps reduce exposure without new purchases.",
+}
+QUOTA = {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED"}}
+
+
+def envelope(reply=REPLY):
+    return {"candidates": [{"content": {"parts": [{"text": json.dumps(reply)}]}}]}
+
+
+@pytest.fixture
+def gemini(monkeypatch):
+    """Route the adapter's HTTP client to a scripted handler; returns the list of requests seen."""
+    seen: list[httpx.Request] = []
+    script = {"handler": lambda request: httpx.Response(200, json=envelope())}
+
+    async def handler(request):
+        seen.append(request)
+        result = script["handler"](request)
+        return await result if asyncio.iscoroutine(result) else result
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only-key")
+    monkeypatch.setenv("GEMINI_MODEL", "primary-model")
+    monkeypatch.delenv("GEMINI_FALLBACK_MODEL", raising=False)
+    monkeypatch.setattr(
+        ai.httpx, "AsyncClient", lambda *a, **k: REAL_CLIENT(transport=httpx.MockTransport(handler))
+    )
+    return seen, script
+
+
+def plan_inputs(snapshot, **profile):
+    profile = Profile(**profile)
+    return snapshot, profile, generate_policy(snapshot, profile)
+
+
+async def test_identical_requests_reuse_the_validated_answer(gemini, snapshot):
+    seen, _ = gemini
+    inputs = plan_inputs(snapshot)
+    first = await personalize(*inputs, question="How can we reduce idling?")
+    second = await personalize(*inputs, question="How can we reduce idling?")
+    await personalize(*inputs, question="Which indoor smoke sources can we remove?")
+    assert first == second
+    assert len(seen) == 2
+
+
+async def test_failures_are_not_cached(gemini, snapshot):
+    seen, script = gemini
+    script["handler"] = lambda request: httpx.Response(429, json=QUOTA)
+    with pytest.raises(AiUnavailableError):
+        await personalize(*plan_inputs(snapshot))
+    script["handler"] = lambda request: httpx.Response(200, json=envelope())
+    assert (await personalize(*plan_inputs(snapshot))).summary == REPLY["summary"]
+    assert len(seen) == 2
+
+
+async def test_slow_model_is_abandoned_within_the_budget(gemini, snapshot):
+    _, script = gemini
+
+    async def slow(request):
+        await asyncio.sleep(5)
+        return httpx.Response(200, json=envelope())
+
+    script["handler"] = slow
+    started = time.monotonic()
+    with pytest.raises(AiUnavailableError):
+        await personalize(*plan_inputs(snapshot), budget_s=0.2)
+    assert time.monotonic() - started < 2
+
+
+async def test_fallback_model_answers_when_primary_is_out_of_quota(gemini, snapshot, monkeypatch):
+    seen, script = gemini
+    monkeypatch.setenv("GEMINI_FALLBACK_MODEL", "fallback-model")
+    script["handler"] = lambda request: (
+        httpx.Response(429, json=QUOTA)
+        if "primary-model" in request.url.path
+        else httpx.Response(200, json=envelope())
+    )
+    reply = await personalize(*plan_inputs(snapshot))
+    assert reply.summary == REPLY["summary"]
+    assert [r.url.path.rsplit("/", 1)[-1] for r in seen] == [
+        "primary-model:generateContent",
+        "fallback-model:generateContent",
+    ]
+
+
+async def test_failure_reason_is_logged_without_secrets_or_content(gemini, snapshot, caplog):
+    _, script = gemini
+    script["handler"] = lambda request: httpx.Response(429, json=QUOTA)
+    with caplog.at_level(logging.WARNING, logger="airwise.ai"), pytest.raises(AiUnavailableError):
+        await personalize(*plan_inputs(snapshot), question="Private question about my asthma?")
+    assert "model=primary-model reason=http_status status=429" in caplog.text
+    for private in ("test-only-key", "asthma", "Pune", "Delhi"):
+        assert private not in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("reply", "reason"),
+    [
+        (
+            {"summary": "AQI is 180 today.", "steps": ["Stay in.", "Close windows."], "rationale": "High."},
+            "numeric_claim",
+        ),
+        ({"summary": "Too short", "steps": ["one"], "rationale": "x"}, "schema"),
+    ],
+)
+async def test_rejected_replies_name_the_reason(gemini, snapshot, caplog, reply, reason):
+    _, script = gemini
+    script["handler"] = lambda request: httpx.Response(200, json=envelope(reply))
+    with caplog.at_level(logging.WARNING, logger="airwise.ai"), pytest.raises(AiUnavailableError):
+        await personalize(*plan_inputs(snapshot))
+    assert f"reason={reason}" in caplog.text
+
+
+async def test_plan_skips_ai_when_too_little_time_remains(gemini, snapshot, monkeypatch, location):
+    seen, _ = gemini
+    monkeypatch.setattr(config, "REQUEST_BUDGET_S", 1.0)
+
+    async def fixed_air(_location):
+        return snapshot
+
+    monkeypatch.setattr(main, "fetch_air", fixed_air)
+    monkeypatch.setattr(main, "gate", main.RateGate())
+    body = {"location": location.model_dump(), "profile": Profile().model_dump(), "ai_consent": True}
+    async with REAL_CLIENT(transport=httpx.ASGITransport(app=main.app), base_url="http://test") as client:
+        response = await client.post("/api/plan", json=body)
+    assert response.status_code == 200
+    assert response.json()["ai_status"] == "unavailable"
+    assert response.json()["policy"]["cards"]
+    assert seen == []
+
+
+def test_settings_validate_models_and_ignore_duplicate_fallback(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only-key")
+    monkeypatch.setenv("GEMINI_MODEL", "primary-model")
+    monkeypatch.setenv("GEMINI_FALLBACK_MODEL", "primary-model")
+    assert config.gemini_settings().models == ("primary-model",)
+    monkeypatch.setenv("GEMINI_FALLBACK_MODEL", "../escape")
+    with pytest.raises(config.ConfigurationError):
+        config.gemini_settings()
+    monkeypatch.delenv("GEMINI_API_KEY")
+    with pytest.raises(config.ConfigurationError):
+        config.gemini_settings()

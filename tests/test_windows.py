@@ -1,17 +1,24 @@
 """Regression cases for advisories whose duration crosses an hourly boundary."""
+
 import unittest
 
-from airwise.ai import AiUnavailable, validate_brief_text
+from airwise.ai import AiUnavailableError, validate_brief_text
 from airwise.models import Hour, Location, Profile, Snapshot
 from airwise.policy import find_lower_hour
 
 
 def compare(pm, aqi, duration):
-    hours = [Hour(time=f"2026-11-19T{8+i:02}:00", pm2_5=p, us_aqi=a)
-             for i, (p, a) in enumerate(zip(pm, aqi))]
-    snapshot = Snapshot(location=Location(name="Pune", latitude=18.52, longitude=73.86),
-                        retrieved_at="2026-11-19T08:00Z", model_time=hours[0].time,
-                        timezone="Asia/Kolkata", hourly=hours)
+    hours = [
+        Hour(time=f"2026-11-19T{8 + i:02}:00", pm2_5=p, us_aqi=a)
+        for i, (p, a) in enumerate(zip(pm, aqi, strict=True))
+    ]
+    snapshot = Snapshot(
+        location=Location(name="Pune", latitude=18.52, longitude=73.86),
+        retrieved_at="2026-11-19T08:00Z",
+        model_time=hours[0].time,
+        timezone="Asia/Kolkata",
+        hourly=hours,
+    )
     return find_lower_hour(snapshot, Profile(start_hour=8, outdoor_minutes=duration))
 
 
@@ -38,7 +45,7 @@ class WindowTests(unittest.TestCase):
 
     def test_ungrounded_digits_blocked_in_english_and_hindi(self):
         for prose in ["AQI is 37 today", "आज ४८ प्रतिशत बेहतर", "68 percent", "20 ppm"]:
-            with self.subTest(prose=prose), self.assertRaises(AiUnavailable):
+            with self.subTest(prose=prose), self.assertRaises(AiUnavailableError):
                 validate_brief_text(prose)
 
     def test_pollutant_names_allowed(self):

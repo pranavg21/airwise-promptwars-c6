@@ -1,0 +1,138 @@
+/* Masthead, page shell and sidebar headings. */
+.top-accent {
+  height: 4px;
+  background: linear-gradient(90deg, #79ba32 10%, #d4fb8b 60%, #9acc81);
+}
+.masthead {
+  height: 77px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 3.2%;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  text-decoration: none;
+  font-weight: 850;
+  letter-spacing: -1.5px;
+  font-size: 29px;
+}
+.brand-symbol {
+  background: var(--ink);
+  color: var(--accent);
+  width: 37px;
+  height: 37px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  font-size: 25px;
+}
+.brand-light {
+  font-weight: 400;
+}
+.brand-dot {
+  color: #71bb27;
+}
+.brand-sep {
+  height: 24px;
+  width: 1px;
+  background: #dde4db;
+}
+.edition {
+  font-size: 10px;
+  font-weight: 750;
+  color: var(--muted);
+  letter-spacing: 1.3px;
+}
+.mast-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.signal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #43534c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.signal-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #88ce39;
+  box-shadow: 0 0 0 4px #eaf6dc;
+}
+.text-button {
+  border: 0;
+  background: none;
+  color: #465a4c;
+  font-weight: 700;
+  font-size: 13px;
+}
+.text-button span {
+  margin-left: 5px;
+}
+.shell {
+  display: grid;
+  grid-template-columns: 324px minmax(0, 1fr);
+  max-width: 1800px;
+  margin: 0 auto;
+  min-height: calc(100vh - 81px);
+}
+.sidebar {
+  padding: 35px 25px;
+  background: #f1f4ed;
+  border-right: 1px solid #dfe6da;
+}
+.side-heading {
+  margin: 0 0 28px;
+}
+.section-index {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+}
+.side-heading h2 {
+  font-size: 27px;
+  letter-spacing: -1.3px;
+  margin: 10px 0 8px;
+}
+.side-heading h2 span {
+  color: #78b62f;
+}
+.side-heading p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0;
+}
+.side-section {
+  border-top: 1px solid #dae2d4;
+  padding: 20px 0;
+}
+.field-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 850;
+  color: #586b5c;
+  letter-spacing: 1px;
+  margin-bottom: 11px;
+}
+.required {
+  color: #c75d49;
+}
+.field-help {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 8px 0 0;
+}

@@ -1,0 +1,68 @@
+/* Design tokens, element defaults and accessibility helpers. */
+:root {
+  color-scheme: light;
+  --ink: #15231e;
+  --dark: #14221d;
+  --shade: #2c3d35;
+  --paper: #f8f9f5;
+  --wash: #edf1e9;
+  --line: #e2e8df;
+  --accent: #b8ec62;
+  --electric: #d8fd9d;
+  --secondary: #64736b;
+  --muted: #5a695e;
+  --label: #4a6b32;
+  --font: Inter, "Segoe UI", Arial, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+a {
+  color: inherit;
+}
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  z-index: 1000;
+  padding: 14px;
+  background: #fff;
+}
+.skip-link:focus {
+  top: 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+*:focus-visible {
+  outline: 3px solid #4d7d11;
+  outline-offset: 3px;
+}
