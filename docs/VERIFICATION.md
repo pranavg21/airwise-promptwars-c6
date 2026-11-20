@@ -95,6 +95,18 @@ From the owner's deployment report; not independently re-run from this repositor
 | Checks | Health and security headers; public `/static/js/transport.js` serves `REQUEST_TIMEOUT_MS = 45_000`; keyboard city search and selection; family plan with no console errors; no overflow at 390 px |
 | Gemini | No calls; the 40-second server budget is covered by CI tests, not by a live call |
 
+### Outlook and city-search rollout, 20 November 2026 (IST)
+
+From the owner's deployment report; not independently re-run from this repository. This is the revision serving production at the time of writing.
+
+| Item | Reported result |
+|---|---|
+| Revision | `airwise-promptwars-c6-00010-kap`, built from a clean checkout of `ea7cd24`, tested at a tagged URL with no traffic, then promoted to 100%; `00008-cid` kept for rollback; configuration identical to before |
+| Outlook | Live Pune `/api/air` returned 24 outlook hours within 24 hours of the model time; `outlook_lowest` matched the lowest outlook entry; the dashboard table showed the same 24 rows and the same lowest AQI |
+| City search | "St. John's" returned suggestions with no "Invalid API path" message |
+| Other checks | Health and security headers; keyboard search, Escape and selection; family plan with no console errors; no overflow at 390 px; repeated on the public URL |
+| Gemini | No calls |
+
 These are single observations, not guarantees of availability or response time. Readings vary with each forecast and must not be presented as current.
 
 Re-run a hosted check with `python scripts/smoke_host.py https://YOUR-HOST` (no Gemini calls). Adding `--ai` sends three real Gemini requests from the daily allowance, and its 60-second client timeout is longer than the browser's 25 seconds.
