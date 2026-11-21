@@ -199,7 +199,8 @@ TRACE_LOWEST_HOUR = (
     "this does not make that hour safe."
 )
 TRACE_SHIFT = (
-    "Timing comparison uses same-location hourly modeled PM2.5 only; does not predict personal inhaled dose."
+    "Timing comparison uses same-location hourly modeled PM2.5 only; does not predict personal inhaled dose. "
+    "A daytime plan is only moved to another time between 06:00 and 22:00 local time."
 )
 TRACE_SWAPS = (
     "Sustainable swaps report direct mechanisms only; no unsupported individual CO₂ or "

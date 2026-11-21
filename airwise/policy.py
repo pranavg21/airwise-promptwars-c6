@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 from . import catalog
 from .aqi import Concern, classify
@@ -18,6 +18,11 @@ __all__ = ["classify", "find_lower_hour", "generate_policy"]
 MINUTES_PER_HOUR = 60
 # Display rule, not a clinical threshold: smaller modeled differences are not worth a schedule change.
 MIN_SHIFT_DIFFERENCE_PCT = 5.0
+# A suggested start must keep the whole activity between these local times, unless the user's own
+# plan already falls outside them (for example, a night shift). A cleaner pre-dawn hour is not a
+# usable suggestion for a household that planned a daytime outing.
+WAKING_START = time(6)
+WAKING_END = time(22)
 
 
 @dataclass(frozen=True)
@@ -49,6 +54,13 @@ def activity_windows(hours: list[Hour], duration: int) -> list[ActivityWindow]:
     return windows
 
 
+def within_waking_hours(window: ActivityWindow, duration: int) -> bool:
+    """Whether the activity starts at or after WAKING_START and ends by WAKING_END on the same day."""
+    start = datetime.fromisoformat(window.start.time)
+    end = start + timedelta(minutes=duration)
+    return start.time() >= WAKING_START and end <= datetime.combine(start.date(), WAKING_END)
+
+
 def find_lower_hour(snapshot: Snapshot, profile: Profile) -> tuple[Hour | None, Shift | None]:
     """Lowest-AQI hour, and a better start time for the whole activity when one clearly exists."""
     hours = snapshot.outlook
@@ -59,7 +71,10 @@ def find_lower_hour(snapshot: Snapshot, profile: Profile) -> tuple[Hour | None, 
     )
     if planned is None or planned.mean_pm25 == 0:
         return minimum, None
-    alternate = min((w for w in windows if w.peak_aqi <= planned.peak_aqi), key=lambda w: w.mean_pm25)
+    candidates = [w for w in windows if w.peak_aqi <= planned.peak_aqi]
+    if within_waking_hours(planned, profile.outdoor_minutes):
+        candidates = [w for w in candidates if within_waking_hours(w, profile.outdoor_minutes)]
+    alternate = min(candidates, key=lambda w: w.mean_pm25)
     difference = (1 - alternate.mean_pm25 / planned.mean_pm25) * 100
     if difference < MIN_SHIFT_DIFFERENCE_PCT:
         return minimum, None

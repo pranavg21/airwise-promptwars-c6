@@ -38,6 +38,18 @@ MUTANTS = (
     ),
     Mutant("airwise/policy.py", "total / duration", "total / (duration + 1)", "duration-weighted PM2.5 mean"),
     Mutant(
+        "airwise/policy.py",
+        "WAKING_START = time(6)",
+        "WAKING_START = time(0)",
+        "a daytime plan is not moved before dawn",
+    ),
+    Mutant(
+        "airwise/policy.py",
+        "end <= datetime.combine(start.date(), WAKING_END)",
+        "start.time() < WAKING_END",
+        "a suggested activity ends by the evening limit",
+    ),
+    Mutant(
         "airwise/forecast.py",
         "<= datetime.fromisoformat(hour.time) < end",
         "<= datetime.fromisoformat(hour.time) <= end",

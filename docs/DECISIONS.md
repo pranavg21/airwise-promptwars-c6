@@ -49,3 +49,9 @@ Short records of choices a reviewer is likely to question, with the reason and t
 - **Decision:** dependencies are pinned and audited in CI (`pip-audit`, `npm audit`, CodeQL) and updated by hand.
 - **Why:** Dependabot opens update branches, and the competition requires a single branch.
 - **Cost:** updates are not proposed automatically.
+
+## 9. Timing suggestions stay within waking hours
+
+- **Decision:** a planned activity that lies between 06:00 and 22:00 local time is only moved to another window inside those hours (`WAKING_START`, `WAKING_END` in `airwise/policy.py`). A plan the user made outside them (for example, a night shift) can move to any hour.
+- **Why:** the cleanest modeled hours are often before dawn. Moving a family's morning outing to 04:00 lowers the modeled average but is not a plan a household can follow.
+- **Cost:** a cleaner pre-dawn window is not suggested; it still appears as the lowest single hour on the dashboard and in the timing card when no suggestion is made.
