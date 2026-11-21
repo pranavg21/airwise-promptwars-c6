@@ -139,7 +139,7 @@ From the owner's deployment report; not independently re-run from this repositor
 
 ### Answer-fallback rollout, 21 November 2026 (IST)
 
-From the owner's deployment report; not independently re-run from this repository. This revision serves production at the time of writing.
+From the owner's deployment report; not independently re-run from this repository.
 
 | Item | Reported result |
 |---|---|
@@ -147,6 +147,17 @@ From the owner's deployment report; not independently re-run from this repositor
 | Checks with Gemini off | The previous rollout's HTTP, outlook and browser checks, plus the AI status label reading "CONFIGURED · OPT IN" before a plan is built; on the tagged URL and again on the public URL after promotion |
 | Gemini (2 live calls, tagged URL) | Pune, family, children, 08:00, 120 minutes; the card showed no complete alternative meeting the criteria. The briefing and the answer to "Should we move our two-hour outing?" were generated, both said the forecast does not support recommending a different start, named no time of day, and did not call the planned time safe. No `gemini_unavailable` log lines |
 | Not covered live | The answer fallback ("Build plan without Gemini", "Go to my rule-based plan") appears only when Gemini fails, so it is covered by `scripts/browser_check.py` with a mocked failure, not by a live call |
+
+### Waking-hours rollout, 21 November 2026 (IST)
+
+From the owner's deployment report; not independently re-run from this repository. This revision serves production at the time of writing.
+
+| Item | Reported result |
+|---|---|
+| Revision | `airwise-promptwars-c6-00018-wod`, built from a clean checkout of `cde83ed` after its Quality Gate and CodeQL runs passed, tested at a tagged URL with no traffic, then promoted to 100%; `00016-xoc` kept for rollback; configuration identical to before |
+| Checks with Gemini off | The previous rollout's HTTP, outlook, label and browser checks, on the tagged URL and again on the public URL; the public `plan.js`, `plan-view.js` and `/` match the repository byte for byte (these files did not change in this release) |
+| Timing (Pune, family, children, 120 minutes) | 06:00 → 13:00 (89.4 → 26.9 µg/m³); 08:00 → 13:00 (59.2 → 26.9 µg/m³); 12:00 and 18:00: no complete alternative met the criteria, lowest single hour 02:00 shown as information. No suggestion started before 06:00 or ended after 22:00 |
+| Gemini | No calls |
 
 These are single observations, not guarantees of availability or response time. Readings vary with each forecast and must not be presented as current.
 
